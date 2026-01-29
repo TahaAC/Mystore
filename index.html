@@ -858,6 +858,23 @@
         });
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Force-remove any old PWA caches/service workers from previous app versions
+            (async () => {
+                try {
+                    if ('serviceWorker' in navigator) {
+                        const regs = await navigator.serviceWorker.getRegistrations();
+                        regs.forEach(r => r.unregister());
+                    }
+                    if (window.caches && caches.keys) {
+                        const keys = await caches.keys();
+                        await Promise.all(keys.map(k => caches.delete(k)));
+                    }
+                    console.log('✓ Cleared old service workers and caches');
+                } catch (e) {
+                    console.warn('Cleanup error:', e);
+                }
+            })();
+
             document.getElementById('expense-date').valueAsDate = new Date();
             document.getElementById('inv-date').valueAsDate = new Date();
             document.getElementById('out-date').valueAsDate = new Date();
@@ -872,6 +889,7 @@
             
             console.log('✓ Gulistan Management System Initialized');
             console.log('✓ Firebase Firestore Connected');
+            console.log('✓ Build version:', '2026-01-29T'+ new Date().toTimeString().slice(0,8));
         });
     </script>
 </body>
