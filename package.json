@@ -1,0 +1,22 @@
+{
+  "name": "gulistan-management",
+  "version": "2.0.0",
+  "description": "Gulistan Supermarket & Halal Meat Management System",
+  "main": "index.html",
+  "scripts": {
+    "start": "http-server -p 8000 -c-1",
+    "build": "echo 'Building PWA...'",
+    "serve": "npx http-server"
+  },
+  "keywords": [
+    "management",
+    "inventory",
+    "sales",
+    "pwa"
+  ],
+  "author": "Gulistan Store",
+  "license": "ISC",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
