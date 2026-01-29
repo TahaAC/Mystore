@@ -421,11 +421,12 @@
 
         // Database Helper
         async function addToCollection(collection, data) {
-            LocalDB.addDoc(collection, data);
+            // Generate a single ID and use it for both LocalDB and Firestore
+            const id = LocalDB.addDoc(collection, data);
             try {
-                await db.collection(collection).add(data);
+                await db.collection(collection).doc(id).set(data);
             } catch (e) {
-                console.warn('Firebase error:', e);
+                console.warn('Firebase write error (using LocalDB fallback):', e);
             }
             loadCollection(collection);
         }
@@ -435,7 +436,7 @@
             try {
                 await db.collection(collection).doc(id).delete();
             } catch (e) {
-                console.warn('Firebase error:', e);
+                console.warn('Firebase delete error (removed locally):', e);
             }
             loadCollection(collection);
         }
@@ -575,13 +576,23 @@
         }
 
         // Initialize
+        async function updateConnectionStatus() {
+            const el = document.getElementById('connection-status');
+            try {
+                await db.collection('expenses').limit(1).get();
+                el.textContent = '✅ Connected to Firebase';
+            } catch (e) {
+                el.textContent = '🟠 Offline mode (LocalDB)';
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('expense-date').valueAsDate = new Date();
             document.getElementById('inv-date').valueAsDate = new Date();
             document.getElementById('out-date').valueAsDate = new Date();
             
-            // Update connection status
-            document.getElementById('connection-status').textContent = '✅ Connected to Firebase';
+            // Update connection status by probing Firestore
+            updateConnectionStatus();
             
             // Load all collections
             const collections = ['expenses', 'investments', 'suppliers', 'invoices', 'exchange', 'cash', 'outstanding'];
