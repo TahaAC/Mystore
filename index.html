@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Gulistan - Management System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -162,6 +165,7 @@
                 </div>
                 <div class="flex-1 min-w-[280px]" id="firebase-status">
                     <p class="text-sm" id="connection-status">Connecting...</p>
+                    <p class="text-xs text-gray-400" id="build-version"></p>
                 </div>
                 <div class="flex items-center gap-2 flex-wrap justify-end"></div>
             </div>
@@ -887,9 +891,11 @@
             const collections = ['expenses', 'investments', 'suppliers', 'invoices', 'exchange', 'cash', 'outstanding'];
             collections.forEach(col => loadCollection(col));
             
+            const build = '2026-01-29T' + new Date().toTimeString().slice(0,8);
+            document.getElementById('build-version').textContent = `Build: ${build}`;
             console.log('✓ Gulistan Management System Initialized');
             console.log('✓ Firebase Firestore Connected');
-            console.log('✓ Build version:', '2026-01-29T'+ new Date().toTimeString().slice(0,8));
+            console.log('✓ Build version:', build);
         });
     </script>
 </body>
