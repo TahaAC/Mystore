@@ -8,7 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
     <style>
         :root {
             --primary: #1e3a8a;
@@ -149,15 +148,7 @@
                 <div class="flex-1 min-w-[280px]" id="firebase-status">
                     <p class="text-sm" id="connection-status">Connecting...</p>
                 </div>
-                <div class="flex items-center gap-2 flex-wrap justify-end">
-                    <input id="auth-email" class="input w-48" placeholder="Email">
-                    <input id="auth-pass" type="password" class="input w-40" placeholder="Password">
-                    <button class="btn btn-success" onclick="signIn()">Sign In</button>
-                    <button class="btn btn-danger" onclick="signOut()">Sign Out</button>
-                    <button class="btn btn-primary" onclick="exportAll()">Export JSON</button>
-                    <label class="btn btn-primary" for="import-file">Import JSON</label>
-                    <input id="import-file" type="file" accept="application/json" style="display:none" onchange="importAll(event)">
-                </div>
+                <div class="flex items-center gap-2 flex-wrap justify-end"></div>
             </div>
         </div>
 
@@ -410,7 +401,6 @@
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        let currentUser = null;
 
         // LocalDB Fallback
         const LocalDB = {
@@ -445,32 +435,7 @@
             }
         };
 
-        // Auth
-        firebase.auth().onAuthStateChanged(u => {
-            currentUser = u;
-            updateConnectionStatus();
-        });
-
-        async function signIn() {
-            const email = document.getElementById('auth-email').value;
-            const pass = document.getElementById('auth-pass').value;
-            try {
-                await firebase.auth().signInWithEmailAndPassword(email, pass);
-                notify('Signed in');
-            } catch (e) {
-                notify('Sign-in failed', 'error');
-                console.warn('Auth error:', e);
-            }
-        }
-
-        async function signOut() {
-            try {
-                await firebase.auth().signOut();
-                notify('Signed out');
-            } catch (e) {
-                notify('Sign-out failed', 'error');
-            }
-        }
+        // No auth – read/write Firestore directly per your preference
 
         // Utilities
         function notify(message, type = 'success') {
@@ -504,7 +469,7 @@
             // Generate a single ID and use it for both LocalDB and Firestore
             const id = LocalDB.addDoc(collection, data);
             try {
-                await db.collection(collection).doc(id).set({ ...data, owner: currentUser?.uid || null });
+                await db.collection(collection).doc(id).set(data);
             } catch (e) {
                 console.warn('Firebase write error (using LocalDB fallback):', e);
             }
@@ -532,15 +497,7 @@
         }
 
         async function loadCollection(collection) {
-            // 1) Render local immediately for responsiveness
-            try {
-                const localData = LocalDB.getCollection(collection);
-                renderTable(collection, localData);
-            } catch (e) {
-                console.warn('Local render error:', e);
-            }
-
-            // 2) Refresh from Firestore when available
+            // Firestore-first: try to read from cloud, then fall back to local
             try {
                 const snapshot = await db.collection(collection).get();
                 const data = [];
@@ -549,8 +506,16 @@
                 });
                 LocalDB.saveCollection(collection, data);
                 renderTable(collection, data);
+                return;
             } catch (e) {
-                console.warn('Firebase read error (kept local data):', e);
+                console.warn('Firebase read error, falling back to local:', e);
+            }
+
+            try {
+                const localData = LocalDB.getCollection(collection);
+                renderTable(collection, localData);
+            } catch (e) {
+                console.warn('Local render error:', e);
             }
         }
 
@@ -760,49 +725,14 @@
             </div>`;
         }
 
-        // Backup Export/Import
-        function exportAll() {
-            const collections = ['expenses','investments','suppliers','invoices','exchange','cash','outstanding'];
-            const payload = {};
-            collections.forEach(c => payload[c] = LocalDB.getCollection(c));
-            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `gulistan-backup-${new Date().toISOString().slice(0,10)}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        async function importAll(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const text = await file.text();
-            try {
-                const payload = JSON.parse(text);
-                const collections = Object.keys(payload);
-                for (const c of collections) {
-                    const rows = payload[c] || [];
-                    LocalDB.saveCollection(c, rows);
-                    for (const r of rows) {
-                        if (r.id) {
-                            try { await db.collection(c).doc(r.id).set(r, { merge: true }); } catch {}
-                        }
-                    }
-                }
-                collections.forEach(col => loadCollection(col));
-                notify('Import completed');
-            } catch (e) {
-                notify('Invalid JSON file', 'error');
-            }
-        }
+        // Backup/Import removed per your preference
 
         // Initialize
         async function updateConnectionStatus() {
             const el = document.getElementById('connection-status');
             try {
                 await db.collection('expenses').limit(1).get();
-                el.textContent = currentUser ? `✅ Firebase • ${currentUser.email}` : '✅ Connected to Firebase';
+                el.textContent = '✅ Connected to Firebase';
             } catch (e) {
                 el.textContent = '🟠 Offline mode (LocalDB)';
             }
