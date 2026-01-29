@@ -170,14 +170,14 @@
         <!-- Navigation -->
         <div class="glass p-4 mb-6 rounded-xl overflow-x-auto">
             <div class="flex gap-2 whitespace-nowrap">
-                <button class="nav-tab active" onclick="switchTab(this, 'expenses')"><i class="fas fa-receipt mr-2"></i>Expenses</button>
-                <button class="nav-tab" onclick="switchTab(this, 'investments')"><i class="fas fa-hand-holding-usd mr-2"></i>Investments</button>
-                <button class="nav-tab" onclick="switchTab(this, 'suppliers')"><i class="fas fa-truck mr-2"></i>Suppliers</button>
-                <button class="nav-tab" onclick="switchTab(this, 'invoices')"><i class="fas fa-file-invoice mr-2"></i>Invoices</button>
-                <button class="nav-tab" onclick="switchTab(this, 'exchange')"><i class="fas fa-exchange-alt mr-2"></i>Exchange</button>
-                <button class="nav-tab" onclick="switchTab(this, 'cash')"><i class="fas fa-coins mr-2"></i>Cash</button>
-                <button class="nav-tab" onclick="switchTab(this, 'outstanding')"><i class="fas fa-star mr-2"></i>Outstanding</button>
-                <button class="nav-tab" onclick="switchTab(this, 'reports')"><i class="fas fa-chart-line mr-2"></i>Reports</button>
+                <button class="nav-tab active" data-tab="expenses"><i class="fas fa-receipt mr-2"></i>Expenses</button>
+                <button class="nav-tab" data-tab="investments"><i class="fas fa-hand-holding-usd mr-2"></i>Investments</button>
+                <button class="nav-tab" data-tab="suppliers"><i class="fas fa-truck mr-2"></i>Suppliers</button>
+                <button class="nav-tab" data-tab="invoices"><i class="fas fa-file-invoice mr-2"></i>Invoices</button>
+                <button class="nav-tab" data-tab="exchange"><i class="fas fa-exchange-alt mr-2"></i>Exchange</button>
+                <button class="nav-tab" data-tab="cash"><i class="fas fa-coins mr-2"></i>Cash</button>
+                <button class="nav-tab" data-tab="outstanding"><i class="fas fa-star mr-2"></i>Outstanding</button>
+                <button class="nav-tab" data-tab="reports"><i class="fas fa-chart-line mr-2"></i>Reports</button>
             </div>
         </div>
 
@@ -562,6 +562,16 @@
             if (button) button.classList.add('active');
         }
 
+        function bindTabClicks() {
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const tabName = btn.getAttribute('data-tab');
+                    if (!tabName) return;
+                    switchTab(btn, tabName);
+                });
+            });
+        }
+
         // Database Helper
         async function addToCollection(collection, data) {
             // Generate a single ID and use it for both LocalDB and Firestore
@@ -840,10 +850,18 @@
             }
         }
 
+        window.addEventListener('error', (e) => {
+            notify(`Error: ${e.message}`, 'error');
+        });
+        window.addEventListener('unhandledrejection', (e) => {
+            notify(`Error: ${e.reason && e.reason.message ? e.reason.message : e.reason}`, 'error');
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('expense-date').valueAsDate = new Date();
             document.getElementById('inv-date').valueAsDate = new Date();
             document.getElementById('out-date').valueAsDate = new Date();
+            bindTabClicks();
             
             // Update connection status by probing Firestore
             updateConnectionStatus();
