@@ -442,6 +442,15 @@
         }
 
         async function loadCollection(collection) {
+            // 1) Render local immediately for responsiveness
+            try {
+                const localData = LocalDB.getCollection(collection);
+                renderTable(collection, localData);
+            } catch (e) {
+                console.warn('Local render error:', e);
+            }
+
+            // 2) Refresh from Firestore when available
             try {
                 const snapshot = await db.collection(collection).get();
                 const data = [];
@@ -451,9 +460,7 @@
                 LocalDB.saveCollection(collection, data);
                 renderTable(collection, data);
             } catch (e) {
-                console.warn('Firebase read error, using local:', e);
-                const data = LocalDB.getCollection(collection);
-                renderTable(collection, data);
+                console.warn('Firebase read error (kept local data):', e);
             }
         }
 
@@ -546,33 +553,40 @@
             const container = document.getElementById(tableId);
             if (!container) return;
 
-            if (data.length === 0) {
-                container.innerHTML = '<p class="text-gray-400">No records yet</p>';
-                return;
-            }
+            try {
+                if (!Array.isArray(data) || data.length === 0) {
+                    container.innerHTML = '<p class="text-gray-400">No records yet</p>';
+                    return;
+                }
 
-            let html = '<table>';
-            const keys = data.length > 0 ? Object.keys(data[0]) : [];
-            html += '<thead><tr>';
-            keys.forEach(k => {
-                if (k !== 'id' && k !== 'createdAt') html += `<th>${k}</th>`;
-            });
-            html += '<th>Actions</th></tr></thead><tbody>';
-
-            data.forEach(row => {
-                html += '<tr>';
+                let html = '<table>';
+                const keys = Object.keys(data[0] || {});
+                html += '<thead><tr>';
                 keys.forEach(k => {
-                    if (k !== 'id' && k !== 'createdAt') {
-                        let val = row[k];
-                        if (typeof val === 'number') val = formatCurrency(val);
-                        html += `<td>${val || 'N/A'}</td>`;
-                    }
+                    if (k !== 'id' && k !== 'createdAt') html += `<th>${k}</th>`;
                 });
-                html += `<td><button class="btn btn-danger btn-sm" onclick="deleteFromCollection('${collection}', '${row.id}')">Delete</button></td>`;
-                html += '</tr>';
-            });
-            html += '</tbody></table>';
-            container.innerHTML = html;
+                html += '<th>Actions</th></tr></thead><tbody>';
+
+                data.forEach(row => {
+                    html += '<tr>';
+                    keys.forEach(k => {
+                        if (k !== 'id' && k !== 'createdAt') {
+                            let val = row[k];
+                            if (typeof val === 'number') val = formatCurrency(val);
+                            container.dataset.collection = collection;
+                            html += `<td>${val ?? 'N/A'}</td>`;
+                        }
+                    });
+                    const id = row.id || '';
+                    html += `<td><button class="btn btn-danger btn-sm" onclick="deleteFromCollection('${collection}', '${id}')">Delete</button></td>`;
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (e) {
+                console.warn('Table render error:', e);
+                container.innerHTML = '<p class="text-red-400">Error rendering table</p>';
+            }
         }
 
         // Initialize
