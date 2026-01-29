@@ -154,13 +154,13 @@
         <!-- Navigation -->
         <div class="glass p-4 mb-6 rounded-xl overflow-x-auto">
             <div class="flex gap-2 whitespace-nowrap">
-                <button class="nav-tab active" onclick="switchTab('expenses')"><i class="fas fa-receipt mr-2"></i>Expenses</button>
-                <button class="nav-tab" onclick="switchTab('investments')"><i class="fas fa-hand-holding-usd mr-2"></i>Investments</button>
-                <button class="nav-tab" onclick="switchTab('suppliers')"><i class="fas fa-truck mr-2"></i>Suppliers</button>
-                <button class="nav-tab" onclick="switchTab('invoices')"><i class="fas fa-file-invoice mr-2"></i>Invoices</button>
-                <button class="nav-tab" onclick="switchTab('exchange')"><i class="fas fa-exchange-alt mr-2"></i>Exchange</button>
-                <button class="nav-tab" onclick="switchTab('cash')"><i class="fas fa-coins mr-2"></i>Cash</button>
-                <button class="nav-tab" onclick="switchTab('outstanding')"><i class="fas fa-star mr-2"></i>Outstanding</button>
+                <button class="nav-tab active" onclick="switchTab(this, 'expenses')"><i class="fas fa-receipt mr-2"></i>Expenses</button>
+                <button class="nav-tab" onclick="switchTab(this, 'investments')"><i class="fas fa-hand-holding-usd mr-2"></i>Investments</button>
+                <button class="nav-tab" onclick="switchTab(this, 'suppliers')"><i class="fas fa-truck mr-2"></i>Suppliers</button>
+                <button class="nav-tab" onclick="switchTab(this, 'invoices')"><i class="fas fa-file-invoice mr-2"></i>Invoices</button>
+                <button class="nav-tab" onclick="switchTab(this, 'exchange')"><i class="fas fa-exchange-alt mr-2"></i>Exchange</button>
+                <button class="nav-tab" onclick="switchTab(this, 'cash')"><i class="fas fa-coins mr-2"></i>Cash</button>
+                <button class="nav-tab" onclick="switchTab(this, 'outstanding')"><i class="fas fa-star mr-2"></i>Outstanding</button>
             </div>
         </div>
 
@@ -411,11 +411,12 @@
         }
 
         // Tab Switching
-        function switchTab(tabName) {
+        function switchTab(button, tabName) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
-            document.getElementById(`tab-${tabName}`).classList.add('active');
-            event.target.classList.add('active');
+            const tabEl = document.getElementById(`tab-${tabName}`);
+            if (tabEl) tabEl.classList.add('active');
+            if (button) button.classList.add('active');
         }
 
         // Database Helper
