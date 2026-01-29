@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
     <style>
         :root {
             --primary: #1e3a8a;
@@ -140,13 +141,22 @@
     <div class="max-w-7xl mx-auto p-4 sm:p-6">
         <!-- Header -->
         <div class="glass p-6 mb-6 rounded-xl">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between gap-4 flex-wrap">
                 <div>
                     <h1 class="text-3xl font-bold mb-2">🏪 Gulistan Management System</h1>
                     <p class="text-gray-400">Supermarket & Halal Meat Management</p>
                 </div>
-                <div id="firebase-status" class="text-right">
+                <div class="flex-1 min-w-[280px]" id="firebase-status">
                     <p class="text-sm" id="connection-status">Connecting...</p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap justify-end">
+                    <input id="auth-email" class="input w-48" placeholder="Email">
+                    <input id="auth-pass" type="password" class="input w-40" placeholder="Password">
+                    <button class="btn btn-success" onclick="signIn()">Sign In</button>
+                    <button class="btn btn-danger" onclick="signOut()">Sign Out</button>
+                    <button class="btn btn-primary" onclick="exportAll()">Export JSON</button>
+                    <label class="btn btn-primary" for="import-file">Import JSON</label>
+                    <input id="import-file" type="file" accept="application/json" style="display:none" onchange="importAll(event)">
                 </div>
             </div>
         </div>
@@ -161,6 +171,7 @@
                 <button class="nav-tab" onclick="switchTab(this, 'exchange')"><i class="fas fa-exchange-alt mr-2"></i>Exchange</button>
                 <button class="nav-tab" onclick="switchTab(this, 'cash')"><i class="fas fa-coins mr-2"></i>Cash</button>
                 <button class="nav-tab" onclick="switchTab(this, 'outstanding')"><i class="fas fa-star mr-2"></i>Outstanding</button>
+                <button class="nav-tab" onclick="switchTab(this, 'reports')"><i class="fas fa-chart-line mr-2"></i>Reports</button>
             </div>
         </div>
 
@@ -185,6 +196,7 @@
                         <button class="btn btn-primary w-full" onclick="addExpense()"><i class="fas fa-plus mr-2"></i>Add</button>
                     </div>
                 </div>
+                <div id="expenses-totals" class="text-sm text-gray-300"></div>
                 <div id="expenses-table"></div>
             </div>
         </div>
@@ -209,6 +221,7 @@
                         <button class="btn btn-primary w-full" onclick="addInvestment()"><i class="fas fa-plus mr-2"></i>Add</button>
                     </div>
                 </div>
+                <div id="investments-totals" class="text-sm text-gray-300"></div>
                 <div id="investments-table"></div>
             </div>
         </div>
@@ -233,6 +246,7 @@
                         <button class="btn btn-primary w-full" onclick="addSupplier()"><i class="fas fa-plus mr-2"></i>Add</button>
                     </div>
                 </div>
+                <div id="suppliers-totals" class="text-sm text-gray-300"></div>
                 <div id="suppliers-table"></div>
             </div>
         </div>
@@ -257,6 +271,7 @@
                         <button class="btn btn-primary w-full" onclick="addInvoice()"><i class="fas fa-plus mr-2"></i>Add</button>
                     </div>
                 </div>
+                <div id="invoices-totals" class="text-sm text-gray-300"></div>
                 <div id="invoices-table"></div>
             </div>
         </div>
@@ -285,6 +300,7 @@
                         <button class="btn btn-primary w-full" onclick="addExchange()"><i class="fas fa-plus mr-2"></i>Add</button>
                     </div>
                 </div>
+                <div id="exchange-totals" class="text-sm text-gray-300"></div>
                 <div id="exchange-table"></div>
             </div>
         </div>
@@ -312,6 +328,7 @@
                         <button class="btn btn-primary w-full" onclick="addCash()"><i class="fas fa-plus mr-2"></i>Add</button>
                     </div>
                 </div>
+                <div id="cash-totals" class="text-sm text-gray-300"></div>
                 <div id="cash-table"></div>
             </div>
         </div>
@@ -336,13 +353,48 @@
                         <button class="btn btn-primary w-full" onclick="addOutstanding()"><i class="fas fa-plus mr-2"></i>Add</button>
                     </div>
                 </div>
+                <div id="outstanding-totals" class="text-sm text-gray-300"></div>
                 <div id="outstanding-table"></div>
+            </div>
+        </div>
+
+        <div class="tab" id="tab-reports">
+            <div class="glass p-6 rounded-xl">
+                <h2 class="text-2xl font-bold mb-4"><i class="fas fa-chart-line mr-2"></i>Reports</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="form-group">
+                        <label class="form-label">From</label>
+                        <input type="date" id="rep-from" class="input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">To</label>
+                        <input type="date" id="rep-to" class="input">
+                    </div>
+                    <div class="form-group flex items-end">
+                        <button class="btn btn-primary w-full" onclick="generateReports()"><i class="fas fa-filter mr-2"></i>Generate</button>
+                    </div>
+                </div>
+                <div id="reports-table"></div>
             </div>
         </div>
     </div>
 
     <!-- Notification -->
     <div id="notification" class="notification"></div>
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="text-xl font-bold">Edit Record</h3>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <form id="edit-form"></form>
+            <div class="mt-4 flex justify-end gap-2">
+                <button class="btn btn-danger" onclick="closeEditModal()" type="button">Cancel</button>
+                <button class="btn btn-success" onclick="saveEdits(event)" type="submit">Save</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Firebase Configuration
@@ -358,6 +410,7 @@
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        let currentUser = null;
 
         // LocalDB Fallback
         const LocalDB = {
@@ -392,6 +445,33 @@
             }
         };
 
+        // Auth
+        firebase.auth().onAuthStateChanged(u => {
+            currentUser = u;
+            updateConnectionStatus();
+        });
+
+        async function signIn() {
+            const email = document.getElementById('auth-email').value;
+            const pass = document.getElementById('auth-pass').value;
+            try {
+                await firebase.auth().signInWithEmailAndPassword(email, pass);
+                notify('Signed in');
+            } catch (e) {
+                notify('Sign-in failed', 'error');
+                console.warn('Auth error:', e);
+            }
+        }
+
+        async function signOut() {
+            try {
+                await firebase.auth().signOut();
+                notify('Signed out');
+            } catch (e) {
+                notify('Sign-out failed', 'error');
+            }
+        }
+
         // Utilities
         function notify(message, type = 'success') {
             const el = document.getElementById('notification');
@@ -424,9 +504,19 @@
             // Generate a single ID and use it for both LocalDB and Firestore
             const id = LocalDB.addDoc(collection, data);
             try {
-                await db.collection(collection).doc(id).set(data);
+                await db.collection(collection).doc(id).set({ ...data, owner: currentUser?.uid || null });
             } catch (e) {
                 console.warn('Firebase write error (using LocalDB fallback):', e);
+            }
+            loadCollection(collection);
+        }
+
+        async function updateInCollection(collection, id, data) {
+            LocalDB.updateDoc(collection, id, data);
+            try {
+                await db.collection(collection).doc(id).set(data, { merge: true });
+            } catch (e) {
+                console.warn('Firebase update error (updated locally):', e);
             }
             loadCollection(collection);
         }
@@ -462,6 +552,24 @@
             } catch (e) {
                 console.warn('Firebase read error (kept local data):', e);
             }
+        }
+
+        function updateTotals(collection, data) {
+            const fieldMap = {
+                expenses: 'amount',
+                investments: 'amount',
+                invoices: 'amount',
+                exchange: 'toAmt',
+                cash: 'amount',
+                outstanding: 'amount',
+                suppliers: null
+            };
+            const field = fieldMap[collection];
+            const el = document.getElementById(`${collection}-totals`);
+            if (!el) return;
+            if (!field) { el.textContent = ''; return; }
+            const total = (data || []).reduce((sum, r) => sum + (parseFloat(r[field]) || 0), 0);
+            el.textContent = `Total: ${formatCurrency(total)}`;
         }
 
         // Add Functions
@@ -556,6 +664,7 @@
             try {
                 if (!Array.isArray(data) || data.length === 0) {
                     container.innerHTML = '<p class="text-gray-400">No records yet</p>';
+                    updateTotals(collection, []);
                     return;
                 }
 
@@ -578,14 +687,113 @@
                         }
                     });
                     const id = row.id || '';
-                    html += `<td><button class="btn btn-danger btn-sm" onclick="deleteFromCollection('${collection}', '${id}')">Delete</button></td>`;
+                    html += `<td class="flex gap-2"><button class="btn btn-primary btn-sm" onclick="openEditModal('${collection}', '${id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteFromCollection('${collection}', '${id}')">Delete</button></td>`;
                     html += '</tr>';
                 });
                 html += '</tbody></table>';
                 container.innerHTML = html;
+                updateTotals(collection, data);
             } catch (e) {
                 console.warn('Table render error:', e);
                 container.innerHTML = '<p class="text-red-400">Error rendering table</p>';
+            }
+        }
+
+        // Edit Modal Logic
+        let editState = { collection: null, id: null, fields: [] };
+
+        function openEditModal(collection, id) {
+            const data = LocalDB.getDoc(collection, id);
+            if (!data) { notify('Record not found', 'error'); return; }
+            editState = { collection, id, fields: Object.keys(data).filter(k => k !== 'id' && k !== 'createdAt') };
+            const form = document.getElementById('edit-form');
+            form.innerHTML = '';
+            editState.fields.forEach(k => {
+                const val = data[k] ?? '';
+                form.innerHTML += `<div class="form-group"><label class="form-label">${k}</label><input class="input" name="${k}" value="${val}"></div>`;
+            });
+            document.getElementById('edit-modal').classList.add('active');
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.remove('active');
+        }
+
+        function saveEdits(e) {
+            e.preventDefault();
+            const form = document.getElementById('edit-form');
+            const updated = {};
+            editState.fields.forEach(k => {
+                const input = form.querySelector(`[name="${k}"]`);
+                updated[k] = input ? (isFinite(input.value) ? parseFloat(input.value) : input.value) : undefined;
+            });
+            updateInCollection(editState.collection, editState.id, updated);
+            closeEditModal();
+            notify('Record updated');
+        }
+
+        // Reports
+        function generateReports() {
+            const from = document.getElementById('rep-from').value;
+            const to = document.getElementById('rep-to').value;
+            const start = from ? new Date(from) : null;
+            const end = to ? new Date(to) : null;
+            const cols = ['expenses','investments','invoices','exchange','cash','outstanding'];
+            const totals = {};
+            const fieldMap = { expenses:'amount', investments:'amount', invoices:'amount', exchange:'toAmt', cash:'amount', outstanding:'amount' };
+            cols.forEach(c => {
+                const field = fieldMap[c];
+                const rows = LocalDB.getCollection(c).filter(r => {
+                    const d = new Date(r.date || r.createdAt || Date.now());
+                    return (!start || d >= start) && (!end || d <= end);
+                });
+                totals[c] = rows.reduce((s, r) => s + (parseFloat(r[field]) || 0), 0);
+            });
+            const el = document.getElementById('reports-table');
+            el.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="glass p-4"><h4 class="font-bold mb-2">Expenses</h4><div>${formatCurrency(totals.expenses)}</div></div>
+                <div class="glass p-4"><h4 class="font-bold mb-2">Investments</h4><div>${formatCurrency(totals.investments)}</div></div>
+                <div class="glass p-4"><h4 class="font-bold mb-2">Invoices</h4><div>${formatCurrency(totals.invoices)}</div></div>
+                <div class="glass p-4"><h4 class="font-bold mb-2">Exchange</h4><div>${formatCurrency(totals.exchange)}</div></div>
+                <div class="glass p-4"><h4 class="font-bold mb-2">Cash</h4><div>${formatCurrency(totals.cash)}</div></div>
+                <div class="glass p-4"><h4 class="font-bold mb-2">Outstanding</h4><div>${formatCurrency(totals.outstanding)}</div></div>
+            </div>`;
+        }
+
+        // Backup Export/Import
+        function exportAll() {
+            const collections = ['expenses','investments','suppliers','invoices','exchange','cash','outstanding'];
+            const payload = {};
+            collections.forEach(c => payload[c] = LocalDB.getCollection(c));
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `gulistan-backup-${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function importAll(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const text = await file.text();
+            try {
+                const payload = JSON.parse(text);
+                const collections = Object.keys(payload);
+                for (const c of collections) {
+                    const rows = payload[c] || [];
+                    LocalDB.saveCollection(c, rows);
+                    for (const r of rows) {
+                        if (r.id) {
+                            try { await db.collection(c).doc(r.id).set(r, { merge: true }); } catch {}
+                        }
+                    }
+                }
+                collections.forEach(col => loadCollection(col));
+                notify('Import completed');
+            } catch (e) {
+                notify('Invalid JSON file', 'error');
             }
         }
 
@@ -594,7 +802,7 @@
             const el = document.getElementById('connection-status');
             try {
                 await db.collection('expenses').limit(1).get();
-                el.textContent = '✅ Connected to Firebase';
+                el.textContent = currentUser ? `✅ Firebase • ${currentUser.email}` : '✅ Connected to Firebase';
             } catch (e) {
                 el.textContent = '🟠 Offline mode (LocalDB)';
             }
