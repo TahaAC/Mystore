@@ -445,6 +445,10 @@
             setTimeout(() => el.classList.remove('show'), 3000);
         }
 
+        // Map logical tab names to Firestore collection names
+        const CollectionMap = { outstanding: 'customers' };
+        const resolveColl = (name) => CollectionMap[name] || name;
+
         function formatDate(date) {
             if (!date) return 'N/A';
             const d = new Date(date);
@@ -469,9 +473,10 @@
             // Generate a single ID and use it for both LocalDB and Firestore
             const id = LocalDB.addDoc(collection, data);
             try {
-                await db.collection(collection).doc(id).set(data);
+                await db.collection(resolveColl(collection)).doc(id).set(data);
             } catch (e) {
                 console.warn('Firebase write error (using LocalDB fallback):', e);
+                notify(`Cloud write failed for ${collection}: ${e.message || e}`, 'error');
             }
             loadCollection(collection);
         }
@@ -479,9 +484,10 @@
         async function updateInCollection(collection, id, data) {
             LocalDB.updateDoc(collection, id, data);
             try {
-                await db.collection(collection).doc(id).set(data, { merge: true });
+                await db.collection(resolveColl(collection)).doc(id).set(data, { merge: true });
             } catch (e) {
                 console.warn('Firebase update error (updated locally):', e);
+                notify(`Cloud update failed for ${collection}: ${e.message || e}`, 'error');
             }
             loadCollection(collection);
         }
@@ -489,9 +495,10 @@
         async function deleteFromCollection(collection, id) {
             LocalDB.deleteDoc(collection, id);
             try {
-                await db.collection(collection).doc(id).delete();
+                await db.collection(resolveColl(collection)).doc(id).delete();
             } catch (e) {
                 console.warn('Firebase delete error (removed locally):', e);
+                notify(`Cloud delete failed for ${collection}: ${e.message || e}`, 'error');
             }
             loadCollection(collection);
         }
@@ -499,7 +506,7 @@
         async function loadCollection(collection) {
             // Firestore-first: try to read from cloud, then fall back to local
             try {
-                const snapshot = await db.collection(collection).get();
+                const snapshot = await db.collection(resolveColl(collection)).get();
                 const data = [];
                 snapshot.forEach(doc => {
                     data.push({ id: doc.id, ...doc.data() });
@@ -509,6 +516,7 @@
                 return;
             } catch (e) {
                 console.warn('Firebase read error, falling back to local:', e);
+                notify(`Cloud read failed for ${collection}: ${e.message || e}`, 'error');
             }
 
             try {
