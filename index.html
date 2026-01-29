@@ -118,6 +118,21 @@
         .notification.error { background: #ef4444; }
         .tab { display: none; }
         .tab.active { display: block; }
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #cbd5e1;
+            padding: 10px 0;
+        }
+        .spinner {
+            width: 16px; height: 16px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .nav-tab {
             padding: 10px 16px;
             background: rgba(255, 255, 255, 0.1);
@@ -449,6 +464,76 @@
         const CollectionMap = { outstanding: 'customers' };
         const resolveColl = (name) => CollectionMap[name] || name;
 
+        // Column schemas per collection (label + formatting)
+        const Schema = {
+            expenses: {
+                columns: [
+                    { key: 'desc', label: 'Description' },
+                    { key: 'amount', label: 'Amount', type: 'currency' },
+                    { key: 'date', label: 'Date', type: 'date' }
+                ],
+                totals: [{ key: 'amount', label: 'Total' }]
+            },
+            investments: {
+                columns: [
+                    { key: 'name', label: 'Name' },
+                    { key: 'amount', label: 'Amount', type: 'currency' },
+                    { key: 'date', label: 'Date', type: 'date' }
+                ],
+                totals: [{ key: 'amount', label: 'Total' }]
+            },
+            suppliers: {
+                columns: [
+                    { key: 'name', label: 'Name' },
+                    { key: 'contact', label: 'Contact' },
+                    { key: 'email', label: 'Email' }
+                ]
+            },
+            invoices: {
+                columns: [
+                    { key: 'num', label: 'Invoice #' },
+                    { key: 'customer', label: 'Customer' },
+                    { key: 'amount', label: 'Amount', type: 'currency' },
+                    { key: 'date', label: 'Date', type: 'date' }
+                ],
+                totals: [{ key: 'amount', label: 'Total' }]
+            },
+            exchange: {
+                columns: [
+                    { key: 'fromCurr', label: 'From Curr' },
+                    { key: 'fromAmt', label: 'From Amt', type: 'currency' },
+                    { key: 'toCurr', label: 'To Curr' },
+                    { key: 'toAmt', label: 'To Amt', type: 'currency' },
+                    { key: 'rate', label: 'Rate' }
+                ],
+                totals: [
+                    { key: 'fromAmt', label: 'Total From' },
+                    { key: 'toAmt', label: 'Total To' }
+                ]
+            },
+            cash: {
+                columns: [
+                    { key: 'desc', label: 'Description' },
+                    { key: 'type', label: 'Type' },
+                    { key: 'amount', label: 'Amount', type: 'currency' },
+                    { key: 'date', label: 'Date', type: 'date' }
+                ],
+                totals: [
+                    { key: 'amount', label: 'Cash In', filter: r => (r.type === 'in') },
+                    { key: 'amount', label: 'Cash Out', filter: r => (r.type === 'out') },
+                    { key: 'amount', label: 'Net', reducer: rows => rows.reduce((s, r) => s + (r.type === 'in' ? +(r.amount||0) : -(r.amount||0)), 0) }
+                ]
+            },
+            outstanding: {
+                columns: [
+                    { key: 'customer', label: 'Customer' },
+                    { key: 'amount', label: 'Amount', type: 'currency' },
+                    { key: 'date', label: 'Date', type: 'date' }
+                ],
+                totals: [{ key: 'amount', label: 'Total' }]
+            }
+        };
+
         function formatDate(date) {
             if (!date) return 'N/A';
             const d = new Date(date);
@@ -457,6 +542,15 @@
 
         function formatCurrency(amount) {
             return '$' + parseFloat(amount || 0).toFixed(2);
+        }
+
+        function showLoading(collection, isLoading) {
+            const tableId = `${collection}-table`;
+            const container = document.getElementById(tableId);
+            if (!container) return;
+            if (isLoading) {
+                container.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading...</span></div>';
+            }
         }
 
         // Tab Switching
@@ -505,6 +599,7 @@
 
         async function loadCollection(collection) {
             // Firestore-first: try to read from cloud, then fall back to local
+            showLoading(collection, true);
             try {
                 const snapshot = await db.collection(resolveColl(collection)).get();
                 const data = [];
@@ -528,21 +623,23 @@
         }
 
         function updateTotals(collection, data) {
-            const fieldMap = {
-                expenses: 'amount',
-                investments: 'amount',
-                invoices: 'amount',
-                exchange: 'toAmt',
-                cash: 'amount',
-                outstanding: 'amount',
-                suppliers: null
-            };
-            const field = fieldMap[collection];
             const el = document.getElementById(`${collection}-totals`);
             if (!el) return;
-            if (!field) { el.textContent = ''; return; }
-            const total = (data || []).reduce((sum, r) => sum + (parseFloat(r[field]) || 0), 0);
-            el.textContent = `Total: ${formatCurrency(total)}`;
+            const schema = Schema[collection];
+            if (!schema || !schema.totals) { el.textContent = ''; return; }
+            const rows = Array.isArray(data) ? data : [];
+            const parts = [];
+            for (const t of schema.totals) {
+                if (typeof t.reducer === 'function') {
+                    const val = t.reducer(rows);
+                    parts.push(`${t.label}: ${formatCurrency(val)}`);
+                } else if (t.key) {
+                    const filtered = t.filter ? rows.filter(t.filter) : rows;
+                    const sum = filtered.reduce((s, r) => s + (parseFloat(r[t.key]) || 0), 0);
+                    parts.push(`${t.label}: ${formatCurrency(sum)}`);
+                }
+            }
+            el.textContent = parts.join(' • ');
         }
 
         // Add Functions
@@ -641,23 +738,20 @@
                     return;
                 }
 
+                const schema = Schema[collection];
                 let html = '<table>';
-                const keys = Object.keys(data[0] || {});
+                const cols = (schema && schema.columns) ? schema.columns : Object.keys(data[0] || {}).filter(k => k !== 'id' && k !== 'createdAt').map(k => ({ key: k, label: k }));
                 html += '<thead><tr>';
-                keys.forEach(k => {
-                    if (k !== 'id' && k !== 'createdAt') html += `<th>${k}</th>`;
-                });
+                cols.forEach(c => { html += `<th>${c.label}</th>`; });
                 html += '<th>Actions</th></tr></thead><tbody>';
 
                 data.forEach(row => {
                     html += '<tr>';
-                    keys.forEach(k => {
-                        if (k !== 'id' && k !== 'createdAt') {
-                            let val = row[k];
-                            if (typeof val === 'number') val = formatCurrency(val);
-                            container.dataset.collection = collection;
-                            html += `<td>${val ?? 'N/A'}</td>`;
-                        }
+                    cols.forEach(c => {
+                        let val = row[c.key];
+                        if (c.type === 'currency') val = formatCurrency(val);
+                        else if (c.type === 'date') val = formatDate(val);
+                        html += `<td>${(val ?? 'N/A')}</td>`;
                     });
                     const id = row.id || '';
                     html += `<td class="flex gap-2"><button class="btn btn-primary btn-sm" onclick="openEditModal('${collection}', '${id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteFromCollection('${collection}', '${id}')">Delete</button></td>`;
