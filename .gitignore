@@ -1,4 +1,43 @@
-*.log
-.env
-.env.*.local
+# System
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
 
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Node
+node_modules/
+# Lock files (optional; previously ignored in this repo)
+package-lock.json
+
+# Build outputs
+.dist/
+dist/
+build/
+out/
+.cache/
+coverage/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+*.env
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Deploy
+.vercel/
+
+# OS / SSH
+*.pem
+.ssh/
