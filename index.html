@@ -1056,67 +1056,82 @@ const FirebaseService = {
     isConnected: false,
     listenersSetup: false,
     offlinePollInterval: null,
-    offlineMode: true,
+    offlineMode: false,
     lastSyncTime: null,
-    syncCache: {},
     collections: ['expenses', 'investments', 'suppliers', 'invoices', 'exchange', 'cash', 'outstanding'],
     
-    // Initialize Firebase connection monitoring with OPTIMIZED single-user approach
+    // Initialize Firebase connection monitoring
     init: function() {
-        // OPTIMIZATION: Batch load all collections at once
-        console.log('🚀 [OPTIMIZED] Loading all collections...');
-        const startTime = performance.now();
-        
+        // FIRST: Load any existing offline data
+        console.log('📂 Loading offline data from browser storage...');
         this.collections.forEach(collectionName => {
             const data = LocalDB.getCollection(collectionName);
             if (data && data.length > 0) {
-                console.log(`✅ ${collectionName}: ${data.length} records`);
+                console.log(`✅ Found ${data.length} ${collectionName} records in offline storage`);
             }
         });
         
-        // OPTIMIZATION: Firebase connection - non-blocking
+        // THEN: Try Firebase connection
         if (!window.FirebaseReady) {
-            console.warn('⚠️ Firebase SDK not available, offline mode enabled');
+            console.warn('⚠️ Firebase SDK not loading, using offline mode only');
             this.setupOfflineMode();
             return;
         }
         
-        console.log('🔗 Connecting to Firebase...');
-        this.attemptConnection();
-        this.setupOfflineMode();
+        if (!window.FirebaseDataMigration) {
+            console.warn('⚠️ Firebase not initialized, using offline mode only');
+            this.setupOfflineMode();
+            return;
+        }
         
-        const loadTime = performance.now() - startTime;
-        console.log(`⚡ Init completed in ${loadTime.toFixed(2)}ms (single-user optimized)`);
+        console.log('🔗 Attempting Firebase connection...');
+        console.log('📊 Firebase Config:', {
+            projectId: window.FirebaseDataMigration.firebaseDb.app.options.projectId,
+            apiKey: window.FirebaseDataMigration.firebaseDb.app.options.apiKey ? 'set' : 'missing'
+        });
+        
+        // First attempt immediately
+        this.attemptConnection();
+        
+        // Set up periodic connection checks (every 30 seconds)
+        setInterval(() => this.attemptConnection(), 30000);
+        
+        // Start offline mode for immediate functionality
+        this.setupOfflineMode();
     },
     
     attemptConnection: function() {
-        if (!window.FirebaseDataMigration) return;
-        
         const fb = window.FirebaseDataMigration;
         
-        // OPTIMIZATION: Quick connection test with timeout
-        const timeoutId = setTimeout(() => {
-            console.warn('⚠️ Firebase connection timeout (5s), using offline mode');
-            this.isConnected = false;
-        }, 5000);
-        
+        // Try to read from Firestore to verify connection
         fb.getDocs(fb.collection(fb.firebaseDb, 'outstanding'))
             .then((snapshot) => {
-                clearTimeout(timeoutId);
                 this.isConnected = true;
-                console.log(`✅ Firebase Connected (${snapshot.size} outstanding records)`);
+                this.updateStatus('connected');
+                console.log(`✅ Firebase Connected! (${snapshot.size} outstanding records)`);
                 
+                // Setup real-time listeners after successful connection
                 if (!this.listenersSetup) {
                     this.setupRealtimeListeners();
                     this.listenersSetup = true;
                 }
                 
+                // Log success in localStorage
                 localStorage.setItem('firebase_last_success', new Date().toISOString());
             })
             .catch((error) => {
-                clearTimeout(timeoutId);
-                console.warn('⚠️ Firebase offline:', error.code);
+                // PERMANENT OFFLINE MODE: App works without Firebase
+                console.warn('⚠️ Firebase unavailable, using offline mode');
+                console.warn('Error details:', error.code, '-', error.message);
+                
+                // Enable offline mode - user can still add/edit/delete records locally
                 this.isConnected = false;
+                this.updateStatus('disconnected');
+                
+                // Load from localStorage and setup for offline use
+                this.setupOfflineMode();
+                
+                // Log the error but don't block app functionality
                 localStorage.setItem('firebase_last_error', new Date().toISOString() + ' - ' + error.code);
             });
     },
@@ -1197,63 +1212,70 @@ const FirebaseService = {
         const fb = window.FirebaseDataMigration;
         const colRef = fb.collection(fb.firebaseDb, collectionName);
         
-        // OPTIMIZATION: Batch sync every 5 minutes (single-user optimized)
-        if (!this.syncInterval) {
-            this.syncInterval = setInterval(() => {
-                if (this.isConnected) {
-                    console.log('🔄 Batch sync...');
-                    this.collections.forEach(col => this.loadAndCacheCollection(col));
+        fb.onSnapshot(colRef, 
+            (snapshot) => {
+                // Process changes
+                const changes = snapshot.docChanges();
+                if (changes.length > 0) {
+                    console.log(`🔄 Firebase update detected in ${collectionName}: ${changes.length} changes`);
+                    this.processChanges(collectionName, changes);
                 }
-            }, 300000); // 5 minutes
-        }
-        this.loadAndCacheCollection(collectionName);
+                
+                // Save to localStorage for offline access
+                const records = [];
+                snapshot.forEach(doc => {
+                    records.push({ id: doc.id, ...doc.data() });
+                });
+                
+                LocalDB.saveCollection(collectionName, records);
+                this.lastSyncTime = new Date();
+                
+                // Trigger UI refresh if on active tab
+                this.refreshUIIfActive(collectionName);
+            },
+            (error) => {
+                console.error(`❌ Firebase listener error for ${collectionName}:`, error);
+                this.updateStatus('disconnected');
+            }
+        );
     },
     
-    loadAndCacheCollection: function(collectionName) {
-        if (!window.FirebaseDataMigration) return;
-        const fb = window.FirebaseDataMigration;
-        
-        fb.getDocs(fb.collection(fb.firebaseDb, collectionName))
-            .then(snapshot => {
-                const records = [];
-                snapshot.forEach(doc => records.push({ id: doc.id, ...doc.data() }));
-                LocalDB.saveCollection(collectionName, records);
-                console.log(`✅ Cached ${collectionName}: ${records.length}`);
-                this.refreshUIIfActive(collectionName);
-            })
-            .catch(e => console.warn(`Cache ${collectionName}:`, e.code));
+    processChanges: function(collectionName, changes) {
+        changes.forEach(change => {
+            if (change.type === 'added') {
+                console.log(`➕ Added document to ${collectionName}:`, change.doc.id);
+            } else if (change.type === 'modified') {
+                console.log(`✏️ Modified document in ${collectionName}:`, change.doc.id);
+            } else if (change.type === 'removed') {
+                console.log(`🗑️ Removed document from ${collectionName}:`, change.doc.id);
+            }
+        });
     },
     
     refreshUIIfActive: function(collectionName) {
-        // OPTIMIZATION: Defer refresh using requestAnimationFrame
-        requestAnimationFrame(() => {
-            const activeTab = localStorage.getItem('gulistan_active_tab');
-            if (activeTab === collectionName) {
-                switch(collectionName) {
-                    case 'expenses': 
-                        if (window.expenseManager) expenseManager.loadExpenses(); 
-                        break;
-                    case 'investments': 
-                        if (window.investmentManager) investmentManager.loadInvestments(); 
-                        break;
-                    case 'suppliers': 
-                        if (window.supplierManager) supplierManager.loadSuppliers(); 
-                        break;
-                    case 'invoices': 
-                        if (window.invoiceManager) invoiceManager.loadInvoices(); 
-                        break;
-                    case 'exchange': 
-                        if (window.exchangeManager) exchangeManager.loadExchangeRecords(); 
-                        break;
-                    case 'cash': 
-                        if (window.cashManager) cashManager.loadCashRecords(); 
-                        break;
-                    case 'outstanding': 
-                        if (window.outstandingManager) outstandingManager.loadRecords(); 
-                        break;
-                }
+        const activeTab = localStorage.getItem('gulistan_active_tab');
+        const tabMap = {
+            'expenses': 'expenses',
+            'investments': 'investments',
+            'suppliers': 'suppliers',
+            'invoices': 'invoices',
+            'exchange': 'exchange',
+            'cash': 'cash',
+            'outstanding': 'outstanding'
+        };
+        
+        if (activeTab && tabMap[collectionName] === activeTab) {
+            console.log(`🔄 Refreshing UI for ${collectionName}`);
+            switch(collectionName) {
+                case 'expenses': expenseManager.loadExpenses(); break;
+                case 'investments': investmentManager.loadInvestments(); break;
+                case 'suppliers': supplierManager.loadSuppliers(); break;
+                case 'invoices': invoiceManager.loadInvoices(); break;
+                case 'exchange': exchangeManager.loadExchangeRecords(); break;
+                case 'cash': cashManager.loadCashRecords(); break;
+                case 'outstanding': outstandingManager.loadRecords(); break;
             }
-        });
+        }
     },
     
     updateStatus: function(status) {
@@ -1318,27 +1340,7 @@ const FirebaseService = {
 };
 
 // ============================================
-// PERFORMANCE UTILITIES (OPTIMIZED SINGLE-USER)
-// ============================================
-
-const PerfUtils = {
-    debounceTimer: {},
-    debounce: function(key, fn, delay = 1000) {
-        clearTimeout(this.debounceTimer[key]);
-        this.debounceTimer[key] = setTimeout(fn, delay);
-    },
-    throttleTimer: {},
-    throttle: function(key, fn, delay = 300) {
-        if (!this.throttleTimer[key]) {
-            fn();
-            this.throttleTimer[key] = true;
-            setTimeout(() => delete this.throttleTimer[key], delay);
-        }
-    }
-};
-
-// ============================================
-// LOCAL STORAGE DATABASE (OFFLINE SUPPORT - OPTIMIZED)
+// LOCAL STORAGE DATABASE (OFFLINE SUPPORT)
 // ============================================
 
 const LocalDB = {
@@ -2309,6 +2311,362 @@ const shareManager = {
 // ============================================
 // OUTSTANDING MANAGER
 // ============================================
+
+// ============================================
+// INVESTMENT MANAGER
+// ============================================
+
+const investmentManager = {
+    data: [],
+    
+    init: function() {
+        this.loadInvestments();
+    },
+    
+    async loadInvestments() {
+        try {
+            this.data = await FirebaseService.getData('investments');
+            const container = document.getElementById('investmentList');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            let total = 0;
+            
+            this.data.forEach(inv => {
+                total += parseFloat(inv.amount) || 0;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${inv.name || 'N/A'}</td>
+                    <td>${utils.formatDate(inv.date)}</td>
+                    <td>${utils.formatCurrency(inv.amount)}</td>
+                    <td>
+                        <button class="edit-btn" onclick="uiManager.openEditModal('${inv.id}', 'investments')">Edit</button>
+                        <button class="delete-btn" onclick="investmentManager.delete('${inv.id}')">Delete</button>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+            
+            document.getElementById('investmentTotal').textContent = utils.formatCurrency(total);
+        } catch(e) {
+            console.error('Error loading investments:', e);
+        }
+    },
+    
+    async addInvestment() {
+        const name = document.getElementById('investmentName').value;
+        const amount = parseFloat(document.getElementById('investmentAmount').value);
+        const date = document.getElementById('investmentDate').value;
+        
+        if (!name || isNaN(amount)) {
+            uiManager.showNotification('Please fill all fields', 'error');
+            return;
+        }
+        
+        await FirebaseService.saveData('investments', null, { name, amount, date });
+        document.getElementById('investmentName').value = '';
+        document.getElementById('investmentAmount').value = '';
+        document.getElementById('investmentDate').value = appState.today;
+        
+        uiManager.showNotification('Investment added', 'success');
+        this.loadInvestments();
+    },
+    
+    async delete(id) {
+        if (confirm('Delete this investment?')) {
+            await FirebaseService.deleteData('investments', id);
+            uiManager.showNotification('Investment deleted', 'success');
+            this.loadInvestments();
+        }
+    }
+};
+
+// ============================================
+// SUPPLIER MANAGER
+// ============================================
+
+const supplierManager = {
+    data: [],
+    
+    init: function() {
+        this.loadSuppliers();
+    },
+    
+    async loadSuppliers() {
+        try {
+            this.data = await FirebaseService.getData('suppliers');
+            const container = document.getElementById('supplierList');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            this.data.forEach(supplier => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${supplier.name || 'N/A'}</td>
+                    <td>${supplier.contact || 'N/A'}</td>
+                    <td>${supplier.email || 'N/A'}</td>
+                    <td>
+                        <button class="edit-btn" onclick="uiManager.openEditModal('${supplier.id}', 'suppliers')">Edit</button>
+                        <button class="delete-btn" onclick="supplierManager.delete('${supplier.id}')">Delete</button>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+        } catch(e) {
+            console.error('Error loading suppliers:', e);
+        }
+    },
+    
+    async addSupplier() {
+        const name = document.getElementById('supplierName').value;
+        const contact = document.getElementById('supplierContact').value;
+        const email = document.getElementById('supplierEmail').value;
+        
+        if (!name) {
+            uiManager.showNotification('Please fill supplier name', 'error');
+            return;
+        }
+        
+        await FirebaseService.saveData('suppliers', null, { name, contact, email });
+        document.getElementById('supplierName').value = '';
+        document.getElementById('supplierContact').value = '';
+        document.getElementById('supplierEmail').value = '';
+        
+        uiManager.showNotification('Supplier added', 'success');
+        this.loadSuppliers();
+    },
+    
+    async delete(id) {
+        if (confirm('Delete this supplier?')) {
+            await FirebaseService.deleteData('suppliers', id);
+            uiManager.showNotification('Supplier deleted', 'success');
+            this.loadSuppliers();
+        }
+    }
+};
+
+// ============================================
+// INVOICE MANAGER
+// ============================================
+
+const invoiceManager = {
+    data: [],
+    
+    init: function() {
+        this.loadInvoices();
+    },
+    
+    async loadInvoices() {
+        try {
+            this.data = await FirebaseService.getData('invoices');
+            const container = document.getElementById('invoiceList');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            let total = 0;
+            
+            this.data.forEach(inv => {
+                total += parseFloat(inv.amount) || 0;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${inv.invoiceNumber || 'N/A'}</td>
+                    <td>${inv.customer || 'N/A'}</td>
+                    <td>${utils.formatDate(inv.date)}</td>
+                    <td>${utils.formatCurrency(inv.amount)}</td>
+                    <td><span class="badge ${inv.status}">${inv.status || 'pending'}</span></td>
+                    <td>
+                        <button class="edit-btn" onclick="uiManager.openEditModal('${inv.id}', 'invoices')">Edit</button>
+                        <button class="delete-btn" onclick="invoiceManager.delete('${inv.id}')">Delete</button>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+            
+            document.getElementById('invoiceTotal').textContent = utils.formatCurrency(total);
+        } catch(e) {
+            console.error('Error loading invoices:', e);
+        }
+    },
+    
+    async addInvoice() {
+        const invoiceNumber = document.getElementById('invoiceNumber').value;
+        const customer = document.getElementById('invoiceCustomer').value;
+        const amount = parseFloat(document.getElementById('invoiceAmount').value);
+        const date = document.getElementById('invoiceDate').value;
+        const status = document.getElementById('invoiceStatus').value;
+        
+        if (!invoiceNumber || !customer || isNaN(amount)) {
+            uiManager.showNotification('Please fill all fields', 'error');
+            return;
+        }
+        
+        await FirebaseService.saveData('invoices', null, { invoiceNumber, customer, amount, date, status });
+        document.getElementById('invoiceNumber').value = '';
+        document.getElementById('invoiceCustomer').value = '';
+        document.getElementById('invoiceAmount').value = '';
+        document.getElementById('invoiceDate').value = appState.today;
+        
+        uiManager.showNotification('Invoice added', 'success');
+        this.loadInvoices();
+    },
+    
+    async delete(id) {
+        if (confirm('Delete this invoice?')) {
+            await FirebaseService.deleteData('invoices', id);
+            uiManager.showNotification('Invoice deleted', 'success');
+            this.loadInvoices();
+        }
+    }
+};
+
+// ============================================
+// EXCHANGE MANAGER
+// ============================================
+
+const exchangeManager = {
+    data: [],
+    
+    init: function() {
+        this.loadExchangeRecords();
+    },
+    
+    async loadExchangeRecords() {
+        try {
+            this.data = await FirebaseService.getData('exchange');
+            const container = document.getElementById('exchangeList');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            this.data.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${record.fromCurrency || 'N/A'}</td>
+                    <td>${utils.formatCurrency(record.fromAmount)}</td>
+                    <td>${record.toCurrency || 'N/A'}</td>
+                    <td>${utils.formatCurrency(record.toAmount)}</td>
+                    <td>${record.rate || 'N/A'}</td>
+                    <td>${utils.formatDate(record.date)}</td>
+                    <td>
+                        <button class="edit-btn" onclick="uiManager.openEditModal('${record.id}', 'exchange')">Edit</button>
+                        <button class="delete-btn" onclick="exchangeManager.delete('${record.id}')">Delete</button>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+        } catch(e) {
+            console.error('Error loading exchange records:', e);
+        }
+    },
+    
+    async addExchange() {
+        const fromCurrency = document.getElementById('fromCurrency').value;
+        const fromAmount = parseFloat(document.getElementById('fromAmount').value);
+        const toCurrency = document.getElementById('toCurrency').value;
+        const toAmount = parseFloat(document.getElementById('toAmount').value);
+        const date = document.getElementById('exchangeDate').value;
+        
+        if (!fromCurrency || isNaN(fromAmount) || !toCurrency || isNaN(toAmount)) {
+            uiManager.showNotification('Please fill all fields', 'error');
+            return;
+        }
+        
+        const rate = (toAmount / fromAmount).toFixed(4);
+        
+        await FirebaseService.saveData('exchange', null, { fromCurrency, fromAmount, toCurrency, toAmount, rate, date });
+        document.getElementById('fromCurrency').value = '';
+        document.getElementById('fromAmount').value = '';
+        document.getElementById('toCurrency').value = '';
+        document.getElementById('toAmount').value = '';
+        
+        uiManager.showNotification('Exchange record added', 'success');
+        this.loadExchangeRecords();
+    },
+    
+    async delete(id) {
+        if (confirm('Delete this exchange record?')) {
+            await FirebaseService.deleteData('exchange', id);
+            uiManager.showNotification('Exchange record deleted', 'success');
+            this.loadExchangeRecords();
+        }
+    }
+};
+
+// ============================================
+// CASH MANAGER
+// ============================================
+
+const cashManager = {
+    data: [],
+    balance: 0,
+    
+    init: function() {
+        this.loadCashRecords();
+    },
+    
+    async loadCashRecords() {
+        try {
+            this.data = await FirebaseService.getData('cash');
+            const container = document.getElementById('cashList');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            this.balance = 0;
+            
+            this.data.forEach(record => {
+                const amount = parseFloat(record.amount) || 0;
+                if (record.type === 'in') this.balance += amount;
+                else this.balance -= amount;
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${record.description || 'N/A'}</td>
+                    <td><span class="badge ${record.type === 'in' ? 'success' : 'danger'}">${record.type.toUpperCase()}</span></td>
+                    <td>${utils.formatCurrency(amount)}</td>
+                    <td>${utils.formatDate(record.date)}</td>
+                    <td>
+                        <button class="edit-btn" onclick="uiManager.openEditModal('${record.id}', 'cash')">Edit</button>
+                        <button class="delete-btn" onclick="cashManager.delete('${record.id}')">Delete</button>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+            
+            document.getElementById('cashBalance').textContent = utils.formatCurrency(this.balance);
+        } catch(e) {
+            console.error('Error loading cash records:', e);
+        }
+    },
+    
+    async addCashRecord() {
+        const description = document.getElementById('cashDescription').value;
+        const type = document.getElementById('cashType').value;
+        const amount = parseFloat(document.getElementById('cashAmount').value);
+        const date = document.getElementById('cashDate').value;
+        
+        if (!description || isNaN(amount)) {
+            uiManager.showNotification('Please fill all fields', 'error');
+            return;
+        }
+        
+        await FirebaseService.saveData('cash', null, { description, type, amount, date });
+        document.getElementById('cashDescription').value = '';
+        document.getElementById('cashAmount').value = '';
+        document.getElementById('cashDate').value = appState.today;
+        
+        uiManager.showNotification('Cash record added', 'success');
+        this.loadCashRecords();
+    },
+    
+    async delete(id) {
+        if (confirm('Delete this cash record?')) {
+            await FirebaseService.deleteData('cash', id);
+            uiManager.showNotification('Cash record deleted', 'success');
+            this.loadCashRecords();
+        }
+    }
+};
 
 const outstandingManager = {
     allRecords: [],
