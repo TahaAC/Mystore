@@ -261,14 +261,15 @@
                         <button class="btn btn-primary w-full" onclick="addInvestment()"><i class="fas fa-plus mr-2"></i>Add</button>
                     </div>
                 </div>
-                <div id="investments-totals" class="text-sm text-gray-300"></div>
                 <div class="flex items-center gap-2 mb-2">
                     <input id="investments-search" class="input" placeholder="Search investments" style="max-width:320px">
+                    <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForTable('investments')"><i class="fas fa-eye mr-1"></i>Preview</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="printTable('investments')"><i class="fas fa-print mr-1"></i>Print</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="exportCSV('investments')"><i class="fas fa-file-export mr-1"></i>Export</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="shareTable('investments')"><i class="fas fa-share-alt mr-1"></i>Share</button>
                 </div>
                 <div id="investments-table"></div>
+                <div id="investments-totals" class="text-sm text-gray-300 mt-2"></div>
             </div>
         </div>
 
@@ -292,14 +293,15 @@
                         <button class="btn btn-primary w-full" onclick="addSupplier()"><i class="fas fa-plus mr-2"></i>Add</button>
                     </div>
                 </div>
-                <div id="suppliers-totals" class="text-sm text-gray-300"></div>
                 <div class="flex items-center gap-2 mb-2">
                     <input id="suppliers-search" class="input" placeholder="Search suppliers" style="max-width:320px">
+                    <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForTable('suppliers')"><i class="fas fa-eye mr-1"></i>Preview</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="printTable('suppliers')"><i class="fas fa-print mr-1"></i>Print</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="exportCSV('suppliers')"><i class="fas fa-file-export mr-1"></i>Export</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="shareTable('suppliers')"><i class="fas fa-share-alt mr-1"></i>Share</button>
                 </div>
                 <div id="suppliers-table"></div>
+                <div id="suppliers-totals" class="text-sm text-gray-300 mt-2"></div>
             </div>
         </div>
 
@@ -334,18 +336,19 @@
                         <button class="btn btn-primary w-full" onclick="addInvoice()"><i class="fas fa-plus mr-2"></i>Add</button>
                     </div>
                 </div>
-                <div id="invoices-totals" class="text-sm text-gray-300"></div>
                 <div class="flex items-center gap-2 mb-2">
                     <input id="invoices-search" class="input" placeholder="Search invoices" style="max-width:320px">
                     <div class="flex items-center gap-2">
                         <label class="text-sm text-gray-300">GST %</label>
                         <input id="gst-rate" class="input" type="number" value="10" min="0" max="100" style="width:90px">
                     </div>
+                    <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForTable('invoices')"><i class="fas fa-eye mr-1"></i>Preview</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="printTable('invoices')"><i class="fas fa-print mr-1"></i>Print</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="exportCSV('invoices')"><i class="fas fa-file-export mr-1"></i>Export</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="shareTable('invoices')"><i class="fas fa-share-alt mr-1"></i>Share</button>
                 </div>
                 <div id="invoices-table"></div>
+                <div id="invoices-totals" class="text-sm text-gray-300 mt-2"></div>
             </div>
         </div>
 
@@ -393,14 +396,15 @@
                         <button class="btn btn-primary w-full" onclick="addExchange()"><i class="fas fa-plus mr-2"></i>Add</button>
                     </div>
                 </div>
-                <div id="exchange-totals" class="text-sm text-gray-300"></div>
                 <div class="flex items-center gap-2 mb-2">
                     <input id="exchange-search" class="input" placeholder="Search exchange" style="max-width:320px">
+                    <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForTable('exchange')"><i class="fas fa-eye mr-1"></i>Preview</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="printTable('exchange')"><i class="fas fa-print mr-1"></i>Print</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="exportCSV('exchange')"><i class="fas fa-file-export mr-1"></i>Export</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="shareTable('exchange')"><i class="fas fa-share-alt mr-1"></i>Share</button>
                 </div>
                 <div id="exchange-table"></div>
+                <div id="exchange-totals" class="text-sm text-gray-300 mt-2"></div>
             </div>
         </div>
 
@@ -492,6 +496,23 @@
                 <button class="btn btn-danger" onclick="closeEditModal()" type="button">Cancel</button>
                 <button class="btn btn-success" onclick="saveEdits(event)" type="submit">Save</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Print Preview Overlay -->
+    <div id="print-overlay" class="modal">
+        <div class="modal-content" style="max-width: 1000px; width: 95%;">
+            <div class="modal-header">
+                <h3 class="text-xl font-bold">Print Preview</h3>
+                <button class="modal-close" onclick="closePrintPreview()">&times;</button>
+            </div>
+            <div class="mb-4 no-print flex gap-2 justify-end">
+                <button class="btn btn-primary toolbar-btn" onclick="printFromOverlay()"><i class="fas fa-print mr-1"></i>Print</button>
+                <button class="btn btn-primary toolbar-btn" onclick="printFromOverlay()"><i class="fas fa-file-pdf mr-1"></i>Save as PDF</button>
+                <button class="btn btn-primary toolbar-btn" onclick="shareFromOverlay()"><i class="fas fa-share-alt mr-1"></i>Share</button>
+                <button class="btn btn-danger toolbar-btn" onclick="closePrintPreview()">Back to App</button>
+            </div>
+            <div id="print-content" class="glass p-4" style="background:white;color:#111827"></div>
         </div>
     </div>
 
@@ -891,6 +912,7 @@
                     html += `<td class="flex gap-2">
                         <button class="btn btn-primary toolbar-btn no-print" onclick="openEditModal('${collection}', '${id}')"><i class='fas fa-pen'></i></button>
                         <button class="btn btn-danger toolbar-btn no-print" onclick="deleteFromCollection('${collection}', '${id}')"><i class='fas fa-trash'></i></button>
+                        <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForRow('${collection}', '${id}')"><i class='fas fa-eye'></i></button>
                         <button class="btn btn-primary toolbar-btn no-print" onclick="printRow('${collection}', '${id}')"><i class='fas fa-print'></i></button>
                     </td>`;
                     html += '</tr>';
@@ -1133,6 +1155,70 @@
             win.document.close();
             win.focus();
             win.print();
+        }
+
+        // Print Preview helpers
+        function openPrintPreviewHTML(title, html, shareText) {
+            const container = document.getElementById('print-content');
+            container.innerHTML = buildPrintHeader(title) + html;
+            container.dataset.shareText = shareText || '';
+            document.getElementById('print-overlay').classList.add('active');
+        }
+
+        function closePrintPreview() {
+            document.getElementById('print-overlay').classList.remove('active');
+            document.getElementById('print-content').innerHTML = '';
+        }
+
+        function printFromOverlay() {
+            window.print();
+        }
+
+        async function shareFromOverlay() {
+            const txt = document.getElementById('print-content').dataset.shareText || '';
+            if (!txt) return notify('Nothing to share', 'error');
+            if (navigator.share) {
+                try { await navigator.share({ title: 'Report', text: txt }); } catch (e) {}
+            } else {
+                await navigator.clipboard.writeText(txt);
+                notify('Copied summary to clipboard');
+            }
+        }
+
+        function openPrintPreviewForTable(collection) {
+            const rows = LocalDB.getCollection(collection);
+            const schema = Schema[collection];
+            const cols = (schema && schema.columns) ? schema.columns : Object.keys(rows[0]||{}).filter(k => k!=='id' && k!=='createdAt').map(k => ({key:k,label:k}));
+            let table = '<table style="width:100%;border-collapse:collapse">';
+            table += '<thead><tr>' + cols.map(c => `<th style="border-bottom:1px solid #e5e7eb;padding:8px;text-align:left">${c.label}</th>`).join('') + '</tr></thead><tbody>';
+            rows.forEach(r => {
+                table += '<tr>' + cols.map(c => {
+                    let val = r[c.key];
+                    if (c.type==='currency') val = formatCurrency(val);
+                    else if (c.type==='date') val = formatDate(val);
+                    return `<td style="border-bottom:1px solid #e5e7eb;padding:8px">${val ?? ''}</td>`;
+                }).join('') + '</tr>';
+            });
+            table += '</tbody></table>';
+            const shareText = rows.map(r => cols.map(c => `${c.label}: ${r[c.key] ?? ''}`).join(' | ')).join('\n');
+            openPrintPreviewHTML(`${collection.toUpperCase()} Report`, table, shareText);
+        }
+
+        function openPrintPreviewForRow(collection, id) {
+            const row = LocalDB.getDoc(collection, id);
+            if (!row) return notify('Record not found', 'error');
+            const schema = Schema[collection];
+            const cols = (schema && schema.columns) ? schema.columns : Object.keys(row).filter(k => k!=='id' && k!=='createdAt').map(k => ({key:k,label:k}));
+            let table = '<table style="width:100%;border-collapse:collapse">';
+            cols.forEach(c => {
+                let val = row[c.key];
+                if (c.type==='currency') val = formatCurrency(val);
+                else if (c.type==='date') val = formatDate(val);
+                table += `<tr><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">${c.label}</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${val ?? ''}</td></tr>`;
+            });
+            table += '</table>';
+            const shareText = cols.map(c => `${c.label}: ${row[c.key] ?? ''}`).join(' | ');
+            openPrintPreviewHTML(`${collection.toUpperCase()} Item`, table, shareText);
         }
 
         function exportCSV(collection) {
