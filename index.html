@@ -383,21 +383,9 @@
             <div class="glass p-6 rounded-xl">
                 <h2 class="text-2xl font-bold mb-4"><i class="fas fa-exchange-alt mr-2"></i>Money Exchange</h2>
                 <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
-                    <div class="form-group">
-                        <label class="form-label">From Currency</label>
-                        <input type="text" id="exc-from-curr" class="input" placeholder="USD">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">From Amount</label>
-                        <input type="number" id="exc-from-amt" class="input" placeholder="0.00">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">To Currency</label>
-                        <input type="text" id="exc-to-curr" class="input" placeholder="PKR">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">To Amount</label>
-                        <input type="number" id="exc-to-amt" class="input" placeholder="0.00">
+                    <div class="form-group md:col-span-2">
+                        <label class="form-label">Amount (AUD)</label>
+                        <input type="number" id="exc-amount" class="input" placeholder="0.00">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Service</label>
@@ -695,25 +683,20 @@
             },
             exchange: {
                 columns: [
-                    { key: 'fromCurr', label: 'From Curr' },
-                    { key: 'fromAmt', label: 'From Amt', type: 'currency' },
-                    { key: 'toCurr', label: 'To Curr' },
-                    { key: 'toAmt', label: 'To Amt', type: 'currency' },
-                    { key: 'rate', label: 'Rate' },
+                    { key: 'amount', label: 'Amount (AUD)', type: 'currency' },
                     { key: 'service', label: 'Service' },
                     { key: 'cashType', label: 'Cash Type' },
                     { key: 'status', label: 'Status' },
                     { key: 'paidOn', label: 'Paid On', type: 'date' }
                 ],
                 totals: [
-                    { key: 'fromAmt', label: 'Total From' },
-                    { key: 'toAmt', label: 'Total To' },
-                    { key: 'toAmt', label: 'Total RIA', filter: r => r.service === 'RIA' },
-                    { key: 'toAmt', label: 'Total Western Union', filter: r => r.service === 'Western Union' },
-                    { key: 'toAmt', label: 'Total Money Gram', filter: r => r.service === 'Money Gram' },
-                    { key: 'toAmt', label: 'Total Hawala', filter: r => r.service === 'Hawala' },
-                    { key: 'toAmt', label: 'Cash In', filter: r => r.cashType === 'in' },
-                    { key: 'toAmt', label: 'Cash Out', filter: r => r.cashType === 'out' }
+                    { key: 'amount', label: 'Total Amount' },
+                    { key: 'amount', label: 'Total RIA', filter: r => r.service === 'RIA' },
+                    { key: 'amount', label: 'Total Western Union', filter: r => r.service === 'Western Union' },
+                    { key: 'amount', label: 'Total Money Gram', filter: r => r.service === 'Money Gram' },
+                    { key: 'amount', label: 'Total Hawala', filter: r => r.service === 'Hawala' },
+                    { key: 'amount', label: 'Cash In', filter: r => r.cashType === 'in' },
+                    { key: 'amount', label: 'Cash Out', filter: r => r.cashType === 'out' }
                 ]
             },
             cash: {
@@ -909,20 +892,14 @@
         }
 
         function addExchange() {
-            const fromCurr = document.getElementById('exc-from-curr').value;
-            const fromAmt = parseFloat(document.getElementById('exc-from-amt').value);
-            const toCurr = document.getElementById('exc-to-curr').value;
-            const toAmt = parseFloat(document.getElementById('exc-to-amt').value);
+            const amount = parseFloat(document.getElementById('exc-amount').value);
             const service = document.getElementById('exc-service') ? document.getElementById('exc-service').value : '';
             const cashType = document.getElementById('exc-type') ? document.getElementById('exc-type').value : 'in';
             const status = document.getElementById('exc-status') ? document.getElementById('exc-status').value : 'Pending';
             const paidOn = document.getElementById('exc-paid-on') ? document.getElementById('exc-paid-on').value : '';
-            if (!fromCurr || !fromAmt || !toCurr || !toAmt) { notify('Fill all fields', 'error'); return; }
-            addToCollection('exchange', { fromCurr, fromAmt, toCurr, toAmt, rate: (toAmt / fromAmt).toFixed(4), service, cashType, status, paidOn });
-            document.getElementById('exc-from-curr').value = '';
-            document.getElementById('exc-from-amt').value = '';
-            document.getElementById('exc-to-curr').value = '';
-            document.getElementById('exc-to-amt').value = '';
+            if (!amount) { notify('Enter amount', 'error'); return; }
+            addToCollection('exchange', { amount, service, cashType, status, paidOn });
+            document.getElementById('exc-amount').value = '';
             notify('Exchange record added');
         }
 
@@ -1079,7 +1056,7 @@
             const end = to ? new Date(to) : null;
             const cols = ['expenses','investments','invoices','exchange','cash','outstanding'];
             const totals = {};
-            const fieldMap = { expenses:'amount', investments:'amount', invoices:'amount', exchange:'toAmt', cash:'amount', outstanding:'amount' };
+            const fieldMap = { expenses:'amount', investments:'amount', invoices:'amount', exchange:'amount', cash:'amount', outstanding:'amount' };
             cols.forEach(c => {
                 const field = fieldMap[c];
                 const rows = LocalDB.getCollection(c).filter(r => {
@@ -1280,7 +1257,7 @@
         }
 
         function buildMonthlySection(collection, rows) {
-            const fieldMap = { expenses:'amount', investments:'amount', invoices:'amount', exchange:'toAmt', cash:'amount', outstanding:'amount' };
+            const fieldMap = { expenses:'amount', investments:'amount', invoices:'amount', exchange:'amount', cash:'amount', outstanding:'amount' };
             const field = fieldMap[collection];
             if (!field) return '';
             // Invoices: monthly Paid vs Unpaid columns
@@ -1303,30 +1280,29 @@
                     .join('');
                 return `<div style="margin-top:12px"><div style="font-weight:600;margin-bottom:6px">Monthly Breakdown</div><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Month</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">Paid</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">Unpaid</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">Total</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
             }
-            // Exchange: monthly From vs To columns
+            // Exchange: monthly totals and Cash In/Out
             if (collection === 'exchange') {
-                // First section: From, To, Cash In, Cash Out
+                // First section: Amount, Cash In, Cash Out
                 const monthly = new Map();
                 rows.forEach(r => {
                     const key = getMonthKey(r.date || r.createdAt);
-                    const from = parseFloat(r.fromAmt) || 0;
-                    const to = parseFloat(r.toAmt) || 0;
-                    const cur = monthly.get(key) || { from:0, to:0, in:0, out:0 };
-                    cur.from += from; cur.to += to;
-                    if (r.cashType === 'in') cur.in += to; else if (r.cashType === 'out') cur.out += to;
+                    const amt = parseFloat(r.amount) || 0;
+                    const cur = monthly.get(key) || { amount:0, in:0, out:0 };
+                    cur.amount += amt;
+                    if (r.cashType === 'in') cur.in += amt; else if (r.cashType === 'out') cur.out += amt;
                     monthly.set(key, cur);
                 });
                 if (!monthly.size) return '';
                 const rowsHtml1 = Array.from(monthly.entries()).sort(([a],[b]) => a.localeCompare(b))
-                    .map(([mon, o]) => `<tr><td style="padding:6px;border-bottom:1px solid #e5e7eb">${mon}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.from||0)}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.to||0)}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.in||0)}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.out||0)}</td></tr>`)
+                    .map(([mon, o]) => `<tr><td style="padding:6px;border-bottom:1px solid #e5e7eb">${mon}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.amount||0)}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.in||0)}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.out||0)}</td></tr>`)
                     .join('');
-                const section1 = `<div style="margin-top:12px"><div style="font-weight:600;margin-bottom:6px">Monthly Breakdown</div><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Month</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">From Total</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">To Total</th><th style=\"text-align:right;padding:6px;border-bottom:1px solid #e5e7eb\">Cash In</th><th style=\"text-align:right;padding:6px;border-bottom:1px solid #e5e7eb\">Cash Out</th></tr></thead><tbody>${rowsHtml1}</tbody></table></div>`;
+                const section1 = `<div style="margin-top:12px"><div style="font-weight:600;margin-bottom:6px">Monthly Breakdown</div><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Month</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">Amount</th><th style=\"text-align:right;padding:6px;border-bottom:1px solid #e5e7eb\">Cash In</th><th style=\"text-align:right;padding:6px;border-bottom:1px solid #e5e7eb\">Cash Out</th></tr></thead><tbody>${rowsHtml1}</tbody></table></div>`;
 
                 // Second section: Per-service totals per month (based on To Amount)
                 const monthlySvc = new Map();
                 rows.forEach(r => {
                     const key = getMonthKey(r.date || r.createdAt);
-                    const to = parseFloat(r.toAmt) || 0;
+                    const to = parseFloat(r.amount) || 0;
                     const svc = r.service || 'Other';
                     const cur = monthlySvc.get(key) || { RIA:0, 'Western Union':0, 'Money Gram':0, Hawala:0 };
                     if (svc in cur) cur[svc] += to;
