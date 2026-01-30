@@ -514,9 +514,11 @@
                         <div class="flex gap-2 w-full">
                             <button class="btn btn-primary w-1/2 no-print" onclick="syncAllFromFirebase()"><i class="fas fa-cloud-download-alt mr-2"></i>Sync Cloud</button>
                             <button class="btn btn-primary w-1/2 no-print" onclick="seedDemoData()"><i class="fas fa-database mr-2"></i>Seed Demo</button>
+                            <button class="btn btn-primary w-1/2 no-print" onclick="checkCloudStatus()"><i class="fas fa-search mr-2"></i>Check Cloud</button>
                         </div>
                     </div>
                 </div>
+                <div id="cloud-status" class="text-sm text-gray-300 mt-2"></div>
                 <div id="reports-table"></div>
             </div>
         </div>
@@ -1225,6 +1227,40 @@
             for (const r of outstanding) await addToCollection('outstanding', r);
 
             notify('Seeded demo data across all tabs');
+        }
+
+        async function checkCloudStatus() {
+            const el = document.getElementById('cloud-status');
+            el.textContent = 'Checking cloud collections...';
+            const cols = ['expenses','investments','suppliers','invoices','exchange','cash','outstanding'];
+            const cache = getCloudNameCache();
+            const rows = [];
+            for (const c of cols) {
+                let resolved = cache[c] || CollectionMap[c] || c;
+                let count = 0;
+                let used = resolved;
+                const candidates = [resolved, ...(CloudNameCandidates[c] || [])];
+                const tried = new Set();
+                for (const name of candidates) {
+                    if (!name || tried.has(name)) continue;
+                    tried.add(name);
+                    try {
+                        const snap = await db.collection(name).get();
+                        count = snap.size;
+                        used = name;
+                        if (count > 0) { resolved = name; break; }
+                    } catch {}
+                }
+                cache[c] = resolved;
+                rows.push({ tab: c, cloud: used, count });
+            }
+            setCloudNameCache(cache);
+            const html = `<div class="glass p-4 mt-2"><div class="font-bold mb-2">Cloud Status</div>
+                <table style="width:100%;border-collapse:collapse">
+                    <thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Tab</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Cloud Collection</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">Docs</th></tr></thead>
+                    <tbody>${rows.map(r => `<tr><td style='padding:6px;border-bottom:1px solid #e5e7eb'>${r.tab}</td><td style='padding:6px;border-bottom:1px solid #e5e7eb'>${r.cloud}</td><td style='padding:6px;border-bottom:1px solid #e5e7eb;text-align:right'>${r.count}</td></tr>`).join('')}</tbody>
+                </table></div>`;
+            el.innerHTML = html;
         }
 
         // Backup/Import removed per your preference
