@@ -1480,6 +1480,27 @@
             // Update connection status by probing Firestore
             updateConnectionStatus();
             
+            // Prefill field mapping defaults if empty
+            try {
+                const fmExisting = getFieldMap();
+                if (!fmExisting || Object.keys(fmExisting).length === 0) {
+                    const fmDefault = {
+                        expenses: { desc: 'desc', amount: 'amount', date: 'date' },
+                        investments: { name: 'name', investor: 'investor', amount: 'amount', date: 'date', method: 'method' },
+                        suppliers: { name: 'name', phone: 'phone', date: 'date', paidOn: 'paidOn', desc: 'desc', details: 'details' },
+                        invoices: { num: 'invoiceNumber', customer: 'customer', amount: 'totalAmount', date: 'date', paidOn: 'paidOn', paymentMethod: 'paymentMethod', bsb: 'bsb', gstRate: 'gstRate', gstAmount: 'gstAmount', netAmount: 'netAmount', amountPaid: 'amountPaid', amountUnpaid: 'amountUnpaid', gstType: 'gstType' },
+                        exchange: { amount: 'amount', service: 'service', cashType: 'cashType', status: 'status', paidOn: 'paidOn' },
+                        cash: { desc: 'desc', type: 'type', amount: 'amount', date: 'date' },
+                        outstanding: { customer: 'customer', amount: 'amount', date: 'date' }
+                    };
+                    setFieldMap(fmDefault);
+                    const schemaEl = document.getElementById('schema-map-json');
+                    if (schemaEl) schemaEl.value = JSON.stringify(fmDefault, null, 2);
+                }
+            } catch (e) {
+                console.warn('Field mapping init error:', e);
+            }
+
             // Load all collections then perform a cloud sync to ensure latest data is shown
             const collections = ['expenses', 'investments', 'suppliers', 'invoices', 'exchange', 'cash', 'outstanding'];
             collections.forEach(col => loadCollection(col));
