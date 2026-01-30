@@ -510,6 +510,12 @@
                     <div class="form-group flex items-end">
                         <button class="btn btn-primary w-full" onclick="generateReports()"><i class="fas fa-filter mr-2"></i>Generate</button>
                     </div>
+                    <div class="form-group flex items-end">
+                        <div class="flex gap-2 w-full">
+                            <button class="btn btn-primary w-1/2 no-print" onclick="syncAllFromFirebase()"><i class="fas fa-cloud-download-alt mr-2"></i>Sync Cloud</button>
+                            <button class="btn btn-primary w-1/2 no-print" onclick="seedDemoData()"><i class="fas fa-database mr-2"></i>Seed Demo</button>
+                        </div>
+                    </div>
                 </div>
                 <div id="reports-table"></div>
             </div>
@@ -1096,6 +1102,92 @@
                 <div class="glass p-4"><h4 class="font-bold mb-2">Haji Hayat Investments</h4><div>${formatCurrency(totalHayat)}</div></div>
                 <div class="glass p-4"><h4 class="font-bold mb-2">Abbas Investments</h4><div>${formatCurrency(totalAbbas)}</div></div>
             </div>`;
+        }
+
+        // Data Sync & Seeding
+        async function syncAllFromFirebase() {
+            const cols = ['expenses','investments','suppliers','invoices','exchange','cash','outstanding'];
+            let totalCloud = 0;
+            for (const c of cols) {
+                try {
+                    const snapshot = await db.collection(resolveColl(c)).get();
+                    const data = [];
+                    snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+                    if (data.length) {
+                        LocalDB.saveCollection(c, data);
+                        renderTable(c, data);
+                        totalCloud += data.length;
+                    }
+                } catch (e) {
+                    console.warn('Sync read error:', e);
+                }
+            }
+            notify(`Synced ${totalCloud} cloud records`);
+        }
+
+        async function seedDemoData() {
+            // Avoid duplicate seeding if local data exists
+            const cols = ['expenses','investments','suppliers','invoices','exchange','cash','outstanding'];
+            const existing = cols.reduce((s, c) => s + (LocalDB.getCollection(c).length || 0), 0);
+            if (existing > 0) {
+                notify('Data already exists; seed skipped', 'warn');
+                return;
+            }
+            const fmt = (d) => d.toISOString().split('T')[0];
+            const today = new Date();
+            const day = (n) => fmt(new Date(today.getFullYear(), today.getMonth(), today.getDate() - n));
+
+            // Suppliers
+            const suppliers = ['Alpha Traders','Beta Supplies','Gamma Imports','Delta Wholesale'];
+            for (const name of suppliers) await addToCollection('suppliers', { name });
+
+            // Expenses
+            const expenses = [
+                { desc:'Store Rent', amount: 1200, date: day(25) },
+                { desc:'Utilities', amount: 320, date: day(22) },
+                { desc:'Insurance', amount: 150, date: day(20) },
+                { desc:'Internet', amount: 80, date: day(18) }
+            ];
+            for (const r of expenses) await addToCollection('expenses', r);
+
+            // Investments
+            const investments = [
+                { name:'Initial Capital', investor:'Haji Hayat', amount: 5000, date: day(30), method:'Cash' },
+                { name:'Equipment Purchase', investor:'Abbas', amount: 3000, date: day(27), method:'Bank Transfer' },
+                { name:'Working Capital', investor:'Haji Hayat', amount: 2000, date: day(15), method:'Cash' }
+            ];
+            for (const r of investments) await addToCollection('investments', r);
+
+            // Invoices
+            const invoices = [
+                { num:'INV-001', customer:'Alpha Traders', amount: 750, date: day(14), paid:'Yes', paidOn: day(10) },
+                { num:'INV-002', customer:'Beta Supplies', amount: 540, date: day(12), paid:'No', paidOn:'' },
+                { num:'INV-003', customer:'Gamma Imports', amount: 920, date: day(8), paid:'Yes', paidOn: day(5) }
+            ];
+            for (const r of invoices) await addToCollection('invoices', r);
+
+            // Exchange (AUD-only)
+            const exchange = [
+                { amount: 1000, service:'RIA', cashType:'in', status:'Paid', paidOn: day(9) },
+                { amount: 650, service:'Western Union', cashType:'out', status:'Pending', paidOn:'' },
+                { amount: 1200, service:'Money Gram', cashType:'in', status:'Paid', paidOn: day(6) }
+            ];
+            for (const r of exchange) await addToCollection('exchange', r);
+
+            // Cash
+            const cash = [
+                { desc:'Float Top-up', type:'in', amount: 300, date: day(7) },
+                { desc:'Petty Expense', type:'out', amount: 45, date: day(7) }
+            ];
+            for (const r of cash) await addToCollection('cash', r);
+
+            // Outstanding
+            const outstanding = [
+                { customer:'Delta Wholesale', amount: 410, date: day(3) }
+            ];
+            for (const r of outstanding) await addToCollection('outstanding', r);
+
+            notify('Seeded demo data across all tabs');
         }
 
         // Backup/Import removed per your preference
