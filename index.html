@@ -1389,6 +1389,7 @@
                 let resolved = cache[c] || CollectionMap[c] || c;
                 let count = 0;
                 let used = resolved;
+                let sampleKeys = [];
                 const candidates = [resolved, ...(CloudNameCandidates[c] || [])];
                 const tried = new Set();
                 for (const name of candidates) {
@@ -1398,17 +1399,38 @@
                         const snap = await db.collection(name).get();
                         count = snap.size;
                         used = name;
-                        if (count > 0) { resolved = name; break; }
+                        if (count > 0) {
+                            resolved = name;
+                            // Fetch one doc to show its field keys
+                            try {
+                                const sampleSnap = await db.collection(name).limit(1).get();
+                                sampleSnap.forEach(doc => {
+                                    const data = doc.data() || {};
+                                    sampleKeys = Object.keys(data).sort();
+                                });
+                            } catch {}
+                            break;
+                        }
                     } catch {}
                 }
                 cache[c] = resolved;
-                rows.push({ tab: c, cloud: used, count });
+                rows.push({ tab: c, cloud: used, count, sampleKeys });
             }
             setCloudNameCache(cache);
             const html = `<div class="glass p-4 mt-2"><div class="font-bold mb-2">Cloud Status</div>
                 <table style="width:100%;border-collapse:collapse">
-                    <thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Tab</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Cloud Collection</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">Docs</th></tr></thead>
-                    <tbody>${rows.map(r => `<tr><td style='padding:6px;border-bottom:1px solid #e5e7eb'>${r.tab}</td><td style='padding:6px;border-bottom:1px solid #e5e7eb'>${r.cloud}</td><td style='padding:6px;border-bottom:1px solid #e5e7eb;text-align:right'>${r.count}</td></tr>`).join('')}</tbody>
+                    <thead><tr>
+                        <th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Tab</th>
+                        <th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Cloud Collection</th>
+                        <th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">Docs</th>
+                        <th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Sample Keys</th>
+                    </tr></thead>
+                    <tbody>${rows.map(r => `<tr>
+                        <td style='padding:6px;border-bottom:1px solid #e5e7eb'>${r.tab}</td>
+                        <td style='padding:6px;border-bottom:1px solid #e5e7eb'>${r.cloud}</td>
+                        <td style='padding:6px;border-bottom:1px solid #e5e7eb;text-align:right'>${r.count}</td>
+                        <td style='padding:6px;border-bottom:1px solid #e5e7eb'>${(r.sampleKeys||[]).join(', ')}</td>
+                    </tr>`).join('')}</tbody>
                 </table></div>`;
             el.innerHTML = html;
         }
