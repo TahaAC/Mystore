@@ -1167,27 +1167,27 @@
                 html += '</tbody></table>';
                 container.innerHTML = html;
                 updateTotals(collection, data);
-                if (collection === 'invoices') {
-                    refreshInvestmentsSplit();
-                }
+                // Keep invoices table stable; run split refresh separately
             } catch (e) {
                 console.warn('Table render error:', e);
                 container.innerHTML = '<p class="text-red-400">Error rendering table</p>';
+            }
+            if (collection === 'invoices') {
+                try { refreshInvestmentsSplit(); } catch (e) { console.warn('Split render error:', e); }
             }
         }
 
         function renderTableToContainer(collection, data, containerId) {
             const container = document.getElementById(containerId);
             if (!container) return;
+            let html = '';
             if (!Array.isArray(data) || data.length === 0) {
-                            const total = (o.paid||0) + (o.unpaid||0);
-                            const gst = total * getGstRate();
-                            return `<tr><td style=\"padding:6px;border-bottom:1px solid #e5e7eb\">${mon}</td><td style=\"padding:6px;border-bottom:1px solid #e5e7eb;text-align:right\">${formatCurrency(o.paid||0)}</td><td style=\"padding:6px;border-bottom:1px solid #e5e7eb;text-align:right\">${formatCurrency(o.unpaid||0)}</td><td style=\"padding:6px;border-bottom:1px solid #e5e7eb;text-align:right\">${formatCurrency(gst)}</td><td style=\"padding:6px;border-bottom:1px solid #e5e7eb;text-align:right\">${formatCurrency(total)}</td></tr>`;
+                container.innerHTML = '<p class="text-gray-400">No records yet</p>';
+                return;
             }
             const schema = Schema[collection];
-                    return `<div style=\"margin-top:12px\"><div style=\"font-weight:600;margin-bottom:6px\">Monthly Breakdown</div><table style=\"width:100%;border-collapse:collapse\"><thead><tr><th style=\"text-align:left;padding:6px;border-bottom:1px solid #e5e7eb\">Month</th><th style=\"text-align:right;padding:6px;border-bottom:1px solid #e5e7eb\">Paid</th><th style=\"text-align:right;padding:6px;border-bottom:1px solid #e5e7eb\">Unpaid</th><th style=\"text-align:right;padding:6px;border-bottom:1px solid #e5e7eb\">GST</th><th style=\"text-align:right;padding:6px;border-bottom:1px solid #e5e7eb\">Total</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
             const cols = (schema && schema.columns) ? schema.columns : Object.keys(data[0] || {}).filter(k => k !== 'id' && k !== 'createdAt').map(k => ({ key: k, label: k }));
-            html += '<thead><tr>' + cols.map(c => `<th>${c.label}</th>`).join('') + '<th>Actions</th></tr></thead><tbody>';
+            html += '<table><thead><tr>' + cols.map(c => `<th>${c.label}</th>`).join('') + '<th>Actions</th></tr></thead><tbody>';
             data.forEach(row => {
                 html += '<tr>';
                 cols.forEach(c => {
