@@ -732,6 +732,12 @@
                     mapped[localKey] = doc[cloudKey];
                 }
             });
+            // Special handling for investments: cloud 'name' holds investor
+            if (collection === 'investments') {
+                mapped.investor = mapped.investor ?? doc.name ?? mapped.investor;
+                mapped.amount = mapped.amount ?? doc.amount ?? mapped.amount;
+                mapped.date = mapped.date ?? doc.date ?? mapped.date;
+            }
             // Special handling for invoices
             if (collection === 'invoices') {
                 mapped.amount = mapped.amount ?? doc.totalAmount ?? doc.netAmount ?? mapped.amount;
@@ -755,6 +761,12 @@
                     mapped[cloudKey] = doc[localKey];
                 }
             });
+            // Special handling for investments: write investor to cloud 'name'
+            if (collection === 'investments') {
+                if (typeof mapped.name === 'undefined' && typeof doc.investor !== 'undefined') mapped.name = doc.investor;
+                if (typeof mapped.amount === 'undefined' && typeof doc.amount !== 'undefined') mapped.amount = doc.amount;
+                if (typeof mapped.date === 'undefined' && typeof doc.date !== 'undefined') mapped.date = doc.date;
+            }
             // Special handling for invoices
             if (collection === 'invoices') {
                 mapped.invoiceNumber = mapped.invoiceNumber ?? doc.num;
@@ -1508,7 +1520,8 @@
                 if (!fmExisting || Object.keys(fmExisting).length === 0) {
                     const fmDefault = {
                         expenses: { desc: 'desc', amount: 'amount', date: 'date' },
-                        investments: { name: 'name', investor: 'investor', amount: 'amount', date: 'date', method: 'method' },
+                        // Cloud 'name' corresponds to local 'investor'
+                        investments: { investor: 'name', amount: 'amount', date: 'date' },
                         suppliers: { name: 'name', phone: 'phone', date: 'date', paidOn: 'paidOn', desc: 'desc', details: 'details' },
                         invoices: { num: 'invoiceNumber', customer: 'customer', amount: 'totalAmount', date: 'date', paidOn: 'paidOn', paymentMethod: 'paymentMethod', bsb: 'bsb', gstRate: 'gstRate', gstAmount: 'gstAmount', netAmount: 'netAmount', amountPaid: 'amountPaid', amountUnpaid: 'amountUnpaid', gstType: 'gstType' },
                         exchange: { amount: 'amount', service: 'service', cashType: 'cashType', status: 'status', paidOn: 'paidOn' },
