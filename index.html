@@ -811,7 +811,7 @@
                     { key: 'amount', label: 'Amount', type: 'currency' },
                     { key: 'date', label: 'Date', type: 'date' },
                     { key: 'paid', label: 'Paid' },
-                    { key: 'paidOn', label: 'Paid On', type: 'date' }
+                    { key: 'paidOn', label: 'Paid On', type: 'date' },
                     { key: 'paymentMethod', label: 'Payment Method' },
                     { key: 'bsb', label: 'BSB' }
                 ],
@@ -1528,6 +1528,8 @@
             collections.forEach(col => loadCollection(col));
             // Light delay to avoid blocking UI
             setTimeout(() => { syncAllFromFirebase(); }, 300);
+            // After syncing, auto-check cloud status to show sample keys
+            setTimeout(() => { checkCloudStatus(); }, 600);
             // Populate company autocomplete
             refreshCompaniesDatalist();
             
