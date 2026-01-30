@@ -644,7 +644,26 @@
 
         // Map logical tab names to Firestore collection names
         const CollectionMap = { outstanding: 'customers' };
-        const resolveColl = (name) => CollectionMap[name] || name;
+        const CloudNameCandidates = {
+            expenses: ['expenses', 'Expenses', 'Expense'],
+            investments: ['investments', 'Investments', 'Investment'],
+            suppliers: ['suppliers', 'Suppliers', 'Supplier'],
+            invoices: ['invoices', 'Invoices', 'Invoice'],
+            exchange: ['exchange', 'Exchange'],
+            cash: ['cash', 'Cash'],
+            outstanding: ['customers', 'Outstanding', 'outstanding']
+        };
+        const CloudNameCacheKey = 'gulistan_cloud_names';
+        function getCloudNameCache() {
+            try { return JSON.parse(localStorage.getItem(CloudNameCacheKey) || '{}'); } catch { return {}; }
+        }
+        function setCloudNameCache(obj) {
+            localStorage.setItem(CloudNameCacheKey, JSON.stringify(obj || {}));
+        }
+        const resolveColl = (name) => {
+            const cache = getCloudNameCache();
+            return cache[name] || CollectionMap[name] || name;
+        };
 
         // Column schemas per collection (label + formatting)
         const Schema = {
@@ -809,21 +828,39 @@
             // Firestore-first: try to read from cloud, then fall back to local
             showLoading(collection, true);
             try {
-                const snapshot = await db.collection(resolveColl(collection)).get();
-                const data = [];
-                snapshot.forEach(doc => {
-                    data.push({ id: doc.id, ...doc.data() });
-                });
-                if (data.length > 0) {
-                    LocalDB.saveCollection(collection, data);
-                    renderTable(collection, data);
-                    return;
-                } else {
-                    // If cloud has no records, prefer existing local data
-                    const localData = LocalDB.getCollection(collection);
-                    renderTable(collection, localData);
+                // Try cache first, else iterate candidates until data found
+                const candidates = [resolveColl(collection), ...(CloudNameCandidates[collection] || [])];
+                const tried = new Set();
+                let foundData = null;
+                let foundName = null;
+                for (const cname of candidates) {
+                    if (!cname || tried.has(cname)) continue;
+                    tried.add(cname);
+                    try {
+                        const snap = await db.collection(cname).get();
+                        const data = [];
+                        snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+                        if (data.length > 0) {
+                            foundData = data;
+                            foundName = cname;
+                            break;
+                        }
+                    } catch (e) {
+                        // continue trying next candidate
+                    }
+                }
+                if (foundData) {
+                    const cache = getCloudNameCache();
+                    cache[collection] = foundName;
+                    setCloudNameCache(cache);
+                    LocalDB.saveCollection(collection, foundData);
+                    renderTable(collection, foundData);
                     return;
                 }
+                // If cloud has no records, prefer existing local data
+                const localData = LocalDB.getCollection(collection);
+                renderTable(collection, localData);
+                return;
             } catch (e) {
                 console.warn('Firebase read error, falling back to local:', e);
                 notify(`Cloud read failed for ${collection}: ${e.message || e}`, 'error');
@@ -1236,9 +1273,11 @@
             // Update connection status by probing Firestore
             updateConnectionStatus();
             
-            // Load all collections
+            // Load all collections then perform a cloud sync to ensure latest data is shown
             const collections = ['expenses', 'investments', 'suppliers', 'invoices', 'exchange', 'cash', 'outstanding'];
             collections.forEach(col => loadCollection(col));
+            // Light delay to avoid blocking UI
+            setTimeout(() => { syncAllFromFirebase(); }, 300);
             // Populate company autocomplete
             refreshCompaniesDatalist();
             
