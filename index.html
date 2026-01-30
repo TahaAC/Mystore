@@ -1132,11 +1132,39 @@
                 const abbas = rows.filter(r => r.investor === 'Abbas').reduce((s, r) => s + (parseFloat(r.amount)||0), 0);
                 parts.push(`Haji Hayat: ${formatCurrency(hayat)}`);
                 parts.push(`Abbas: ${formatCurrency(abbas)}`);
+                const methodCash = rows.filter(r => r.method === 'Cash').reduce((s, r) => s + (parseFloat(r.amount)||0), 0);
+                const methodBank = rows.filter(r => r.method === 'Bank Transfer').reduce((s, r) => s + (parseFloat(r.amount)||0), 0);
+                parts.push(`Cash: ${formatCurrency(methodCash)}`);
+                parts.push(`Bank Transfer: ${formatCurrency(methodBank)}`);
             } else if (collection === 'suppliers') {
                 parts.push(`Suppliers Count: ${rows.length}`);
             }
             if (!parts.length) return '';
             return `<div style="margin-top:12px"><div style="font-weight:600;margin-bottom:6px">Summary</div><ul style="list-style:none;padding:0;margin:0">${parts.map(p => `<li style="margin-bottom:4px">${p}</li>`).join('')}</ul></div>`;
+        }
+
+        function getMonthKey(d) {
+            const date = new Date(d || Date.now());
+            const y = date.getFullYear();
+            const m = (date.getMonth() + 1).toString().padStart(2, '0');
+            return `${y}-${m}`;
+        }
+
+        function buildMonthlySection(collection, rows) {
+            const fieldMap = { expenses:'amount', investments:'amount', invoices:'amount', exchange:'toAmt', cash:'amount', outstanding:'amount' };
+            const field = fieldMap[collection];
+            if (!field) return '';
+            const monthly = new Map();
+            rows.forEach(r => {
+                const key = getMonthKey(r.date || r.createdAt);
+                const val = parseFloat(r[field]) || 0;
+                monthly.set(key, (monthly.get(key) || 0) + val);
+            });
+            if (!monthly.size) return '';
+            const rowsHtml = Array.from(monthly.entries()).sort(([a],[b]) => a.localeCompare(b))
+                .map(([mon, total]) => `<tr><td style="padding:6px;border-bottom:1px solid #e5e7eb">${mon}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(total)}</td></tr>`)
+                .join('');
+            return `<div style="margin-top:12px"><div style="font-weight:600;margin-bottom:6px">Monthly Breakdown</div><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Month</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">Total</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
         }
 
         function printTable(collection) {
@@ -1229,8 +1257,11 @@
             });
             table += '</tbody></table>';
             const summary = buildSummaryHTML(collection, rows);
-            const shareText = rows.map(r => cols.map(c => `${c.label}: ${r[c.key] ?? ''}`).join(' | ')).join('\n') + (summary ? `\n\n${summary.replace(/<[^>]+>/g,'')}` : '');
-            openPrintPreviewHTML(`${collection.toUpperCase()} Report`, table + summary, shareText);
+            const monthly = buildMonthlySection(collection, rows);
+            const shareText = rows.map(r => cols.map(c => `${c.label}: ${r[c.key] ?? ''}`).join(' | ')).join('\n')
+                + (summary ? `\n\n${summary.replace(/<[^>]+>/g,'')}` : '')
+                + (monthly ? `\n\n${monthly.replace(/<[^>]+>/g,'')}` : '');
+            openPrintPreviewHTML(`${collection.toUpperCase()} Report`, table + summary + monthly, shareText);
         }
 
         function openPrintPreviewForRow(collection, id) {
