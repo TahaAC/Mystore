@@ -66,17 +66,37 @@
         }
         th {
             background: rgba(0, 0, 0, 0.3);
-            padding: 12px;
+            // Simple search bindings per tab
             text-align: left;
             border-bottom: 2px solid var(--secondary);
             font-weight: 600;
         }
-        td {
-            padding: 12px;
-            border-bottom: 1px solid rgba(59, 130, 246, 0.1);
-        }
+                    if (tab === 'exchange') {
+                        applyExchangeFilters();
+                    } else {
+                        const q = input.value.toLowerCase();
+                        const rows = LocalDB.getCollection(tab);
+                        const filtered = rows.filter(r => JSON.stringify(r).toLowerCase().includes(q));
+                        renderTable(tab, filtered);
+                    }
         tr:hover { background: rgba(59, 130, 246, 0.05); }
         .badge {
+
+            // Exchange filters
+            function applyExchangeFilters() {
+                const q = (document.getElementById('exchange-search')?.value || '').toLowerCase();
+                const svc = document.getElementById('exchange-service-filter')?.value || 'all';
+                const cash = document.getElementById('exchange-cash-filter')?.value || 'all';
+                let rows = LocalDB.getCollection('exchange');
+                if (q) rows = rows.filter(r => JSON.stringify(r).toLowerCase().includes(q));
+                if (svc !== 'all') rows = rows.filter(r => (r.service === svc));
+                if (cash !== 'all') rows = rows.filter(r => (r.cashType === cash));
+                renderTable('exchange', rows);
+            }
+            const excSvc = document.getElementById('exchange-service-filter');
+            const excCash = document.getElementById('exchange-cash-filter');
+            excSvc && excSvc.addEventListener('change', applyExchangeFilters);
+            excCash && excCash.addEventListener('change', applyExchangeFilters);
             display: inline-block;
             padding: 4px 12px;
             border-radius: 12px;
@@ -412,6 +432,18 @@
                 </div>
                 <div class="flex items-center gap-2 mb-2">
                     <input id="exchange-search" class="input" placeholder="Search exchange" style="max-width:320px">
+                    <select id="exchange-service-filter" class="input" style="max-width:200px">
+                        <option value="all">All Services</option>
+                        <option value="RIA">RIA</option>
+                        <option value="Western Union">Western Union</option>
+                        <option value="Money Gram">Money Gram</option>
+                        <option value="Hawala">Hawala</option>
+                    </select>
+                    <select id="exchange-cash-filter" class="input" style="max-width:160px">
+                        <option value="all">All Cash</option>
+                        <option value="in">Cash In</option>
+                        <option value="out">Cash Out</option>
+                    </select>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForTable('exchange')"><i class="fas fa-eye mr-1"></i>Preview</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="printTable('exchange')"><i class="fas fa-print mr-1"></i>Print</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="exportCSV('exchange')"><i class="fas fa-file-export mr-1"></i>Export</button>
@@ -1273,20 +1305,38 @@
             }
             // Exchange: monthly From vs To columns
             if (collection === 'exchange') {
+                // First section: From, To, Cash In, Cash Out
                 const monthly = new Map();
                 rows.forEach(r => {
                     const key = getMonthKey(r.date || r.createdAt);
                     const from = parseFloat(r.fromAmt) || 0;
                     const to = parseFloat(r.toAmt) || 0;
-                    const cur = monthly.get(key) || { from:0, to:0 };
+                    const cur = monthly.get(key) || { from:0, to:0, in:0, out:0 };
                     cur.from += from; cur.to += to;
+                    if (r.cashType === 'in') cur.in += to; else if (r.cashType === 'out') cur.out += to;
                     monthly.set(key, cur);
                 });
                 if (!monthly.size) return '';
-                const rowsHtml = Array.from(monthly.entries()).sort(([a],[b]) => a.localeCompare(b))
-                    .map(([mon, o]) => `<tr><td style="padding:6px;border-bottom:1px solid #e5e7eb">${mon}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.from||0)}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.to||0)}</td></tr>`)
+                const rowsHtml1 = Array.from(monthly.entries()).sort(([a],[b]) => a.localeCompare(b))
+                    .map(([mon, o]) => `<tr><td style="padding:6px;border-bottom:1px solid #e5e7eb">${mon}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.from||0)}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.to||0)}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.in||0)}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.out||0)}</td></tr>`)
                     .join('');
-                return `<div style="margin-top:12px"><div style="font-weight:600;margin-bottom:6px">Monthly Breakdown</div><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Month</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">From Total</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">To Total</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+                const section1 = `<div style="margin-top:12px"><div style="font-weight:600;margin-bottom:6px">Monthly Breakdown</div><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Month</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">From Total</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">To Total</th><th style=\"text-align:right;padding:6px;border-bottom:1px solid #e5e7eb\">Cash In</th><th style=\"text-align:right;padding:6px;border-bottom:1px solid #e5e7eb\">Cash Out</th></tr></thead><tbody>${rowsHtml1}</tbody></table></div>`;
+
+                // Second section: Per-service totals per month (based on To Amount)
+                const monthlySvc = new Map();
+                rows.forEach(r => {
+                    const key = getMonthKey(r.date || r.createdAt);
+                    const to = parseFloat(r.toAmt) || 0;
+                    const svc = r.service || 'Other';
+                    const cur = monthlySvc.get(key) || { RIA:0, 'Western Union':0, 'Money Gram':0, Hawala:0 };
+                    if (svc in cur) cur[svc] += to;
+                    monthlySvc.set(key, cur);
+                });
+                const rowsHtml2 = Array.from(monthlySvc.entries()).sort(([a],[b]) => a.localeCompare(b))
+                    .map(([mon, o]) => `<tr><td style="padding:6px;border-bottom:1px solid #e5e7eb">${mon}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o['RIA']||0)}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o['Western Union']||0)}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o['Money Gram']||0)}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o['Hawala']||0)}</td></tr>`)
+                    .join('');
+                const section2 = `<div style="margin-top:12px"><div style="font-weight:600;margin-bottom:6px">Monthly by Service</div><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Month</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">RIA</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">Western Union</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">Money Gram</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">Hawala</th></tr></thead><tbody>${rowsHtml2}</tbody></table></div>`;
+                return section1 + section2;
             }
             // Default: single Total column per month
             const monthly = new Map();
