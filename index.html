@@ -306,10 +306,30 @@
         <div class="tab" id="tab-suppliers">
             <div class="glass p-6 rounded-xl">
                 <h2 class="text-2xl font-bold mb-4"><i class="fas fa-truck mr-2"></i>Suppliers</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
                     <div class="form-group">
                         <label class="form-label">Name</label>
                         <input type="text" id="supp-name" class="input" placeholder="Company name" list="companies-list">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="text" id="supp-phone" class="input" placeholder="0422622642">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Date</label>
+                        <input type="date" id="supp-date" class="input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Paid On</label>
+                        <input type="date" id="supp-paid-on" class="input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Desc</label>
+                        <input type="text" id="supp-desc" class="input" placeholder="Description">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Details</label>
+                        <input type="text" id="supp-details" class="input" placeholder="Details">
                     </div>
                     <div class="form-group flex items-end">
                         <button class="btn btn-primary w-full" onclick="addSupplier()"><i class="fas fa-plus mr-2"></i>Add</button>
@@ -776,7 +796,12 @@
             },
             suppliers: {
                 columns: [
-                    { key: 'name', label: 'Name' }
+                    { key: 'name', label: 'Name' },
+                    { key: 'phone', label: 'Phone' },
+                    { key: 'date', label: 'Date', type: 'date' },
+                    { key: 'paidOn', label: 'Paid On', type: 'date' },
+                    { key: 'desc', label: 'Desc' },
+                    { key: 'details', label: 'Details' }
                 ]
             },
             invoices: {
@@ -1015,9 +1040,19 @@
         function addSupplier() {
             const nameRaw = document.getElementById('supp-name').value;
             const name = normalizeName(nameRaw);
+            const phone = document.getElementById('supp-phone') ? document.getElementById('supp-phone').value : '';
+            const date = document.getElementById('supp-date') ? document.getElementById('supp-date').value : '';
+            const paidOn = document.getElementById('supp-paid-on') ? document.getElementById('supp-paid-on').value : '';
+            const desc = document.getElementById('supp-desc') ? document.getElementById('supp-desc').value : '';
+            const details = document.getElementById('supp-details') ? document.getElementById('supp-details').value : '';
             if (!name) { notify('Fill supplier name', 'error'); return; }
-            addToCollection('suppliers', { name });
+            addToCollection('suppliers', { name, phone, date, paidOn, desc, details });
             document.getElementById('supp-name').value = '';
+            document.getElementById('supp-phone') && (document.getElementById('supp-phone').value = '');
+            document.getElementById('supp-date') && (document.getElementById('supp-date').value = '');
+            document.getElementById('supp-paid-on') && (document.getElementById('supp-paid-on').value = '');
+            document.getElementById('supp-desc') && (document.getElementById('supp-desc').value = '');
+            document.getElementById('supp-details') && (document.getElementById('supp-details').value = '');
             notify('Supplier added');
             refreshCompaniesDatalist();
         }
@@ -1438,6 +1473,8 @@
             document.getElementById('expense-date').valueAsDate = new Date();
             document.getElementById('inv-date').valueAsDate = new Date();
             document.getElementById('out-date').valueAsDate = new Date();
+            const suppDateEl = document.getElementById('supp-date');
+            if (suppDateEl) suppDateEl.valueAsDate = new Date();
             bindTabClicks();
             
             // Update connection status by probing Firestore
