@@ -520,6 +520,15 @@
                 </div>
                 <div id="cloud-status" class="text-sm text-gray-300 mt-2"></div>
                 <div id="reports-table"></div>
+                <div class="glass p-4 mt-4">
+                    <div class="font-bold mb-2">Schema Match (Advanced)</div>
+                    <p class="text-sm text-gray-300 mb-2">Define field name mappings per tab to match your Firebase schema. Example: { "invoices": { "customer": "company" } }</p>
+                    <textarea id="schema-map-json" class="input" style="min-height:120px" placeholder='{"invoices":{"customer":"company"}}'></textarea>
+                    <div class="flex gap-2 mt-2">
+                        <button class="btn btn-primary no-print" onclick="loadSchemaMapUI()"><i class="fas fa-download mr-2"></i>Load Mapping</button>
+                        <button class="btn btn-primary no-print" onclick="saveSchemaMapUI()"><i class="fas fa-save mr-2"></i>Save Mapping</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -667,6 +676,37 @@
             return cache[name] || CollectionMap[name] || name;
         };
 
+        // Field name mapping (cloud <-> local) per collection
+        const FieldMapKey = 'gulistan_field_map';
+        function getFieldMap() {
+            try { return JSON.parse(localStorage.getItem(FieldMapKey) || '{}'); } catch { return {}; }
+        }
+        function setFieldMap(obj) {
+            localStorage.setItem(FieldMapKey, JSON.stringify(obj || {}));
+        }
+        // Map a cloud doc to local keys
+        function mapRead(collection, doc) {
+            const fm = getFieldMap()[collection] || {};
+            const mapped = { ...doc };
+            Object.entries(fm).forEach(([localKey, cloudKey]) => {
+                if (cloudKey in doc) {
+                    mapped[localKey] = doc[cloudKey];
+                }
+            });
+            return mapped;
+        }
+        // Map a local doc to cloud keys
+        function mapWrite(collection, doc) {
+            const fm = getFieldMap()[collection] || {};
+            const mapped = { ...doc };
+            Object.entries(fm).forEach(([localKey, cloudKey]) => {
+                if (localKey in doc) {
+                    mapped[cloudKey] = doc[localKey];
+                }
+            });
+            return mapped;
+        }
+
         // Column schemas per collection (label + formatting)
         const Schema = {
             expenses: {
@@ -796,7 +836,8 @@
             // Generate a single ID and use it for both LocalDB and Firestore
             const id = LocalDB.addDoc(collection, data);
             try {
-                await db.collection(resolveColl(collection)).doc(id).set(data);
+                const cloudData = mapWrite(collection, data);
+                await db.collection(resolveColl(collection)).doc(id).set(cloudData);
             } catch (e) {
                 console.warn('Firebase write error (using LocalDB fallback):', e);
                 notify(`Cloud write failed for ${collection}: ${e.message || e}`, 'error');
@@ -807,7 +848,8 @@
         async function updateInCollection(collection, id, data) {
             LocalDB.updateDoc(collection, id, data);
             try {
-                await db.collection(resolveColl(collection)).doc(id).set(data, { merge: true });
+                const cloudData = mapWrite(collection, data);
+                await db.collection(resolveColl(collection)).doc(id).set(cloudData, { merge: true });
             } catch (e) {
                 console.warn('Firebase update error (updated locally):', e);
                 notify(`Cloud update failed for ${collection}: ${e.message || e}`, 'error');
@@ -841,7 +883,11 @@
                     try {
                         const snap = await db.collection(cname).get();
                         const data = [];
-                        snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+                        snap.forEach(doc => {
+                            const raw = { id: doc.id, ...doc.data() };
+                            const mapped = mapRead(collection, raw);
+                            data.push(mapped);
+                        });
                         if (data.length > 0) {
                             foundData = data;
                             foundName = cname;
@@ -1151,7 +1197,11 @@
                 try {
                     const snapshot = await db.collection(resolveColl(c)).get();
                     const data = [];
-                    snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+                    snapshot.forEach(doc => {
+                        const raw = { id: doc.id, ...doc.data() };
+                        const mapped = mapRead(c, raw);
+                        data.push(mapped);
+                    });
                     if (data.length) {
                         LocalDB.saveCollection(c, data);
                         renderTable(c, data);
@@ -1261,6 +1311,25 @@
                     <tbody>${rows.map(r => `<tr><td style='padding:6px;border-bottom:1px solid #e5e7eb'>${r.tab}</td><td style='padding:6px;border-bottom:1px solid #e5e7eb'>${r.cloud}</td><td style='padding:6px;border-bottom:1px solid #e5e7eb;text-align:right'>${r.count}</td></tr>`).join('')}</tbody>
                 </table></div>`;
             el.innerHTML = html;
+        }
+
+        function loadSchemaMapUI() {
+            const fm = getFieldMap();
+            const el = document.getElementById('schema-map-json');
+            if (el) el.value = JSON.stringify(fm, null, 2);
+        }
+        function saveSchemaMapUI() {
+            const el = document.getElementById('schema-map-json');
+            if (!el) return;
+            const txt = el.value;
+            try {
+                const obj = JSON.parse(txt || '{}');
+                setFieldMap(obj);
+                notify('Saved field mapping');
+                ['expenses','investments','suppliers','invoices','exchange','cash','outstanding'].forEach(col => loadCollection(col));
+            } catch (e) {
+                notify('Invalid JSON mapping', 'error');
+            }
         }
 
         // Backup/Import removed per your preference
