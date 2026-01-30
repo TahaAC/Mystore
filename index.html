@@ -286,18 +286,10 @@
         <div class="tab" id="tab-suppliers">
             <div class="glass p-6 rounded-xl">
                 <h2 class="text-2xl font-bold mb-4"><i class="fas fa-truck mr-2"></i>Suppliers</h2>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div class="form-group">
                         <label class="form-label">Name</label>
-                        <input type="text" id="supp-name" class="input" placeholder="Supplier name">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Contact</label>
-                        <input type="text" id="supp-contact" class="input" placeholder="Phone">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Email</label>
-                        <input type="email" id="supp-email" class="input" placeholder="Email">
+                        <input type="text" id="supp-name" class="input" placeholder="Company name" list="companies-list">
                     </div>
                     <div class="form-group flex items-end">
                         <button class="btn btn-primary w-full" onclick="addSupplier()"><i class="fas fa-plus mr-2"></i>Add</button>
@@ -638,9 +630,7 @@
             },
             suppliers: {
                 columns: [
-                    { key: 'name', label: 'Name' },
-                    { key: 'contact', label: 'Contact' },
-                    { key: 'email', label: 'Email' }
+                    { key: 'name', label: 'Name' }
                 ]
             },
             invoices: {
@@ -844,13 +834,9 @@
         function addSupplier() {
             const nameRaw = document.getElementById('supp-name').value;
             const name = normalizeName(nameRaw);
-            const contact = document.getElementById('supp-contact').value;
-            const email = document.getElementById('supp-email').value;
             if (!name) { notify('Fill supplier name', 'error'); return; }
-            addToCollection('suppliers', { name, contact, email });
+            addToCollection('suppliers', { name });
             document.getElementById('supp-name').value = '';
-            document.getElementById('supp-contact').value = '';
-            document.getElementById('supp-email').value = '';
             notify('Supplier added');
             refreshCompaniesDatalist();
         }
@@ -1297,10 +1283,14 @@
             html += '</tbody></table>';
             const win = window.open('', '_blank');
             if (!win) return notify('Popup blocked: enable popups to print', 'error');
-            win.document.write(`<html><head><title>${collection} Report</title></head><body>${html}</body></html>`);
+            win.document.write(`<html><head><title>${collection} Report</title>
+            <style>body{font-family:Segoe UI,Tahoma,sans-serif;padding:16px} .bar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:8px}</style>
+            </head><body>
+            <div class="bar"><button onclick="window.close()">Back to App</button><button onclick="window.print()">Print</button></div>
+            ${html}
+            </body></html>`);
             win.document.close();
             win.focus();
-            win.print();
         }
 
         function printRow(collection, id) {
@@ -1319,10 +1309,14 @@
             html += '</table>';
             const win = window.open('', '_blank');
             if (!win) return notify('Popup blocked: enable popups to print', 'error');
-            win.document.write(`<html><head><title>${collection} Item</title></head><body>${html}</body></html>`);
+            win.document.write(`<html><head><title>${collection} Item</title>
+            <style>body{font-family:Segoe UI,Tahoma,sans-serif;padding:16px} .bar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:8px}</style>
+            </head><body>
+            <div class="bar"><button onclick="window.close()">Back to App</button><button onclick="window.print()">Print</button></div>
+            ${html}
+            </body></html>`);
             win.document.close();
             win.focus();
-            win.print();
         }
 
         // Print Preview helpers
