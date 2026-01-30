@@ -1111,6 +1111,34 @@
             return `<div class="print-header">${logo}${company}${sub}<div style="margin-top:8px;font-weight:600">${title}</div></div>`;
         }
 
+        function buildSummaryHTML(collection, rows) {
+            const schema = Schema[collection];
+            const parts = [];
+            if (schema && Array.isArray(schema.totals)) {
+                for (const t of schema.totals) {
+                    if (typeof t.reducer === 'function') {
+                        const val = t.reducer(rows);
+                        parts.push(`${t.label}: ${typeof val === 'number' ? formatCurrency(val) : val}`);
+                    } else if (t.key) {
+                        const filtered = t.filter ? rows.filter(t.filter) : rows;
+                        const sum = filtered.reduce((s, r) => s + (parseFloat(r[t.key]) || 0), 0);
+                        parts.push(`${t.label}: ${formatCurrency(sum)}`);
+                    }
+                }
+            }
+            // Additional summaries per collection
+            if (collection === 'investments') {
+                const hayat = rows.filter(r => r.investor === 'Haji Hayat').reduce((s, r) => s + (parseFloat(r.amount)||0), 0);
+                const abbas = rows.filter(r => r.investor === 'Abbas').reduce((s, r) => s + (parseFloat(r.amount)||0), 0);
+                parts.push(`Haji Hayat: ${formatCurrency(hayat)}`);
+                parts.push(`Abbas: ${formatCurrency(abbas)}`);
+            } else if (collection === 'suppliers') {
+                parts.push(`Suppliers Count: ${rows.length}`);
+            }
+            if (!parts.length) return '';
+            return `<div style="margin-top:12px"><div style="font-weight:600;margin-bottom:6px">Summary</div><ul style="list-style:none;padding:0;margin:0">${parts.map(p => `<li style="margin-bottom:4px">${p}</li>`).join('')}</ul></div>`;
+        }
+
         function printTable(collection) {
             const rows = LocalDB.getCollection(collection);
             const schema = Schema[collection];
@@ -1200,8 +1228,9 @@
                 }).join('') + '</tr>';
             });
             table += '</tbody></table>';
-            const shareText = rows.map(r => cols.map(c => `${c.label}: ${r[c.key] ?? ''}`).join(' | ')).join('\n');
-            openPrintPreviewHTML(`${collection.toUpperCase()} Report`, table, shareText);
+            const summary = buildSummaryHTML(collection, rows);
+            const shareText = rows.map(r => cols.map(c => `${c.label}: ${r[c.key] ?? ''}`).join(' | ')).join('\n') + (summary ? `\n\n${summary.replace(/<[^>]+>/g,'')}` : '');
+            openPrintPreviewHTML(`${collection.toUpperCase()} Report`, table + summary, shareText);
         }
 
         function openPrintPreviewForRow(collection, id) {
