@@ -808,9 +808,16 @@
                 snapshot.forEach(doc => {
                     data.push({ id: doc.id, ...doc.data() });
                 });
-                LocalDB.saveCollection(collection, data);
-                renderTable(collection, data);
-                return;
+                if (data.length > 0) {
+                    LocalDB.saveCollection(collection, data);
+                    renderTable(collection, data);
+                    return;
+                } else {
+                    // If cloud has no records, prefer existing local data
+                    const localData = LocalDB.getCollection(collection);
+                    renderTable(collection, localData);
+                    return;
+                }
             } catch (e) {
                 console.warn('Firebase read error, falling back to local:', e);
                 notify(`Cloud read failed for ${collection}: ${e.message || e}`, 'error');
