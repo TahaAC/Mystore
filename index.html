@@ -335,7 +335,7 @@
         <div class="tab" id="tab-invoices">
             <div class="glass p-6 rounded-xl">
                 <h2 class="text-2xl font-bold mb-4"><i class="fas fa-file-invoice mr-2"></i>Invoices</h2>
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
                     <div class="form-group">
                         <label class="form-label">Invoice #</label>
                         <input type="text" id="inv-num" class="input" placeholder="Invoice number">
@@ -349,6 +349,13 @@
                         <input type="number" id="inv-price" class="input" placeholder="0.00">
                     </div>
                     <div class="form-group">
+                        <label class="form-label">GST Type</label>
+                        <select id="inv-gst-type" class="input">
+                            <option value="include">include</option>
+                            <option value="exclude">exclude</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Paid</label>
                         <select id="inv-paid" class="input">
                             <option value="No">No</option>
@@ -358,6 +365,18 @@
                     <div class="form-group">
                         <label class="form-label">Paid On</label>
                         <input type="date" id="inv-paid-on" class="input" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Payment Method</label>
+                        <select id="inv-payment-method" class="input">
+                            <option value="cash">cash</option>
+                            <option value="bank">bank</option>
+                            <option value="card">card</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">BSB</label>
+                        <input type="text" id="inv-bsb" class="input" placeholder="033174">
                     </div>
                     <div class="form-group flex items-end">
                         <button class="btn btn-primary w-full" onclick="addInvoice()"><i class="fas fa-plus mr-2"></i>Add</button>
@@ -693,6 +712,18 @@
                     mapped[localKey] = doc[cloudKey];
                 }
             });
+            // Special handling for invoices
+            if (collection === 'invoices') {
+                mapped.amount = mapped.amount ?? doc.totalAmount ?? doc.netAmount ?? mapped.amount;
+                if (typeof mapped.paid === 'undefined' && typeof doc.status !== 'undefined') {
+                    mapped.paid = (doc.status === 'paid') ? 'Yes' : 'No';
+                }
+                mapped.num = mapped.num ?? doc.invoiceNumber ?? mapped.num;
+                mapped.customer = mapped.customer ?? doc.customer ?? mapped.customer;
+                mapped.date = mapped.date ?? doc.date ?? mapped.date;
+                mapped.paymentMethod = mapped.paymentMethod ?? doc.paymentMethod ?? mapped.paymentMethod;
+                mapped.bsb = mapped.bsb ?? doc.bsb ?? mapped.bsb;
+            }
             return mapped;
         }
         // Map a local doc to cloud keys
@@ -704,6 +735,18 @@
                     mapped[cloudKey] = doc[localKey];
                 }
             });
+            // Special handling for invoices
+            if (collection === 'invoices') {
+                mapped.invoiceNumber = mapped.invoiceNumber ?? doc.num;
+                mapped.totalAmount = mapped.totalAmount ?? doc.amount;
+                mapped.status = mapped.status ?? ((doc.paid === 'Yes') ? 'paid' : 'unpaid');
+                // Ensure numeric GST fields
+                if (typeof mapped.gstRate === 'undefined' && typeof doc.gstRate !== 'undefined') mapped.gstRate = doc.gstRate;
+                if (typeof mapped.gstAmount === 'undefined' && typeof doc.gstAmount !== 'undefined') mapped.gstAmount = doc.gstAmount;
+                if (typeof mapped.netAmount === 'undefined' && typeof doc.netAmount !== 'undefined') mapped.netAmount = doc.netAmount;
+                if (typeof mapped.amountPaid === 'undefined' && typeof doc.amountPaid !== 'undefined') mapped.amountPaid = doc.amountPaid;
+                if (typeof mapped.amountUnpaid === 'undefined' && typeof doc.amountUnpaid !== 'undefined') mapped.amountUnpaid = doc.amountUnpaid;
+            }
             return mapped;
         }
 
@@ -744,6 +787,8 @@
                     { key: 'date', label: 'Date', type: 'date' },
                     { key: 'paid', label: 'Paid' },
                     { key: 'paidOn', label: 'Paid On', type: 'date' }
+                    { key: 'paymentMethod', label: 'Payment Method' },
+                    { key: 'bsb', label: 'BSB' }
                 ],
                 totals: [
                     { key: 'amount', label: 'Total' },
@@ -982,13 +1027,33 @@
             const customerRaw = document.getElementById('inv-customer').value;
             const customer = normalizeName(customerRaw);
             const amount = parseFloat(document.getElementById('inv-price').value);
+            const gstType = document.getElementById('inv-gst-type') ? document.getElementById('inv-gst-type').value : 'include';
+            const gstRatePct = parseFloat(document.getElementById('gst-rate')?.value || '10');
             const paid = document.getElementById('inv-paid') ? document.getElementById('inv-paid').value : 'No';
             const paidOn = document.getElementById('inv-paid-on') ? document.getElementById('inv-paid-on').value : '';
+            const paymentMethod = document.getElementById('inv-payment-method') ? document.getElementById('inv-payment-method').value : 'cash';
+            const bsb = document.getElementById('inv-bsb') ? document.getElementById('inv-bsb').value : '';
             if (!num || !customer || !amount) { notify('Fill all fields', 'error'); return; }
-            addToCollection('invoices', { num, customer, amount, date: new Date().toISOString().split('T')[0], paid, paidOn });
+            // Derive cloud-aligned fields
+            let netAmount, gstAmount, totalAmount;
+            const rate = (isNaN(gstRatePct) ? 10 : gstRatePct) / 100;
+            if (gstType === 'include') {
+                netAmount = amount / (1 + rate);
+                gstAmount = amount - netAmount;
+                totalAmount = amount;
+            } else {
+                netAmount = amount;
+                gstAmount = amount * rate;
+                totalAmount = netAmount + gstAmount;
+            }
+            const status = (paid === 'Yes') ? 'paid' : 'unpaid';
+            const amountPaid = (paid === 'Yes') ? totalAmount : 0;
+            const amountUnpaid = (paid === 'Yes') ? 0 : totalAmount;
+            addToCollection('invoices', { num, customer, amount: totalAmount, date: new Date().toISOString().split('T')[0], paid, paidOn, paymentMethod, bsb, status, gstType, gstRate: isNaN(gstRatePct) ? 10 : gstRatePct, netAmount, gstAmount, amountPaid, amountUnpaid });
             document.getElementById('inv-num').value = '';
             document.getElementById('inv-customer').value = '';
             document.getElementById('inv-price').value = '';
+            document.getElementById('inv-bsb').value = '';
             notify('Invoice added');
             refreshCompaniesDatalist();
         }
