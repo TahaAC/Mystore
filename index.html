@@ -653,12 +653,16 @@
             investments: {
                 columns: [
                     { key: 'name', label: 'Description' },
-                    { key: 'investor', label: 'Investor' },
-                    { key: 'amount', label: 'Amount', type: 'currency' },
+                    { label: 'Haji Hayat', type: 'currency', value: r => (r.investor === 'Haji Hayat' ? (parseFloat(r.amount)||0) : 0) },
+                    { label: 'Abbas', type: 'currency', value: r => (r.investor === 'Abbas' ? (parseFloat(r.amount)||0) : 0) },
                     { key: 'date', label: 'Date', type: 'date' },
                     { key: 'method', label: 'Method' }
                 ],
-                totals: [{ key: 'amount', label: 'Total' }]
+                totals: [
+                    { key: 'amount', label: 'Total' },
+                    { key: 'amount', label: 'Haji Hayat Total', filter: r => (r.investor === 'Haji Hayat') },
+                    { key: 'amount', label: 'Abbas Total', filter: r => (r.investor === 'Abbas') }
+                ]
             },
             suppliers: {
                 columns: [
@@ -948,7 +952,7 @@
                 data.forEach(row => {
                     html += '<tr>';
                     cols.forEach(c => {
-                        let val = row[c.key];
+                        let val = (typeof c.value === 'function') ? c.value(row) : row[c.key];
                         if (c.type === 'currency') val = formatCurrency(val);
                         else if (c.type === 'date') val = formatDate(val);
                         html += `<td>${(val ?? 'N/A')}</td>`;
@@ -989,7 +993,7 @@
             data.forEach(row => {
                 html += '<tr>';
                 cols.forEach(c => {
-                    let val = row[c.key];
+                    let val = (typeof c.value === 'function') ? c.value(row) : row[c.key];
                     if (c.type === 'currency') val = formatCurrency(val);
                     else if (c.type === 'date') val = formatDate(val);
                     html += `<td>${(val ?? 'N/A')}</td>`;
