@@ -295,6 +295,11 @@
                         <button class="btn btn-primary w-full" onclick="addSupplier()"><i class="fas fa-plus mr-2"></i>Add</button>
                     </div>
                 </div>
+                <!-- Quick add companies into suppliers -->
+                <div class="flex items-center gap-2 mb-2">
+                    <select id="suppliers-quick-select" class="input" style="max-width:320px"></select>
+                    <button class="btn btn-primary toolbar-btn no-print" onclick="addSupplierQuick()"><i class="fas fa-plus mr-1"></i>Quick Add</button>
+                </div>
                 <div class="flex items-center gap-2 mb-2">
                     <input id="suppliers-search" class="input" placeholder="Search suppliers" style="max-width:320px">
                     <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForTable('suppliers')"><i class="fas fa-eye mr-1"></i>Preview</button>
@@ -381,6 +386,13 @@
                             <option>Western Union</option>
                             <option>Money Gram</option>
                             <option>Hawala</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Cash Type</label>
+                        <select id="exc-type" class="input">
+                            <option value="in">Cash In</option>
+                            <option value="out">Cash Out</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -657,12 +669,19 @@
                     { key: 'toAmt', label: 'To Amt', type: 'currency' },
                     { key: 'rate', label: 'Rate' },
                     { key: 'service', label: 'Service' },
+                    { key: 'cashType', label: 'Cash Type' },
                     { key: 'status', label: 'Status' },
                     { key: 'paidOn', label: 'Paid On', type: 'date' }
                 ],
                 totals: [
                     { key: 'fromAmt', label: 'Total From' },
-                    { key: 'toAmt', label: 'Total To' }
+                    { key: 'toAmt', label: 'Total To' },
+                    { key: 'toAmt', label: 'Total RIA', filter: r => r.service === 'RIA' },
+                    { key: 'toAmt', label: 'Total Western Union', filter: r => r.service === 'Western Union' },
+                    { key: 'toAmt', label: 'Total Money Gram', filter: r => r.service === 'Money Gram' },
+                    { key: 'toAmt', label: 'Total Hawala', filter: r => r.service === 'Hawala' },
+                    { key: 'toAmt', label: 'Cash In', filter: r => r.cashType === 'in' },
+                    { key: 'toAmt', label: 'Cash Out', filter: r => r.cashType === 'out' }
                 ]
             },
             cash: {
@@ -863,10 +882,11 @@
             const toCurr = document.getElementById('exc-to-curr').value;
             const toAmt = parseFloat(document.getElementById('exc-to-amt').value);
             const service = document.getElementById('exc-service') ? document.getElementById('exc-service').value : '';
+            const cashType = document.getElementById('exc-type') ? document.getElementById('exc-type').value : 'in';
             const status = document.getElementById('exc-status') ? document.getElementById('exc-status').value : 'Pending';
             const paidOn = document.getElementById('exc-paid-on') ? document.getElementById('exc-paid-on').value : '';
             if (!fromCurr || !fromAmt || !toCurr || !toAmt) { notify('Fill all fields', 'error'); return; }
-            addToCollection('exchange', { fromCurr, fromAmt, toCurr, toAmt, rate: (toAmt / fromAmt).toFixed(4), service, status, paidOn });
+            addToCollection('exchange', { fromCurr, fromAmt, toCurr, toAmt, rate: (toAmt / fromAmt).toFixed(4), service, cashType, status, paidOn });
             document.getElementById('exc-from-curr').value = '';
             document.getElementById('exc-from-amt').value = '';
             document.getElementById('exc-to-curr').value = '';
@@ -1161,6 +1181,23 @@
             LocalDB.getCollection('suppliers').forEach(s => { if (s.name) names.add(s.name); });
             LocalDB.getCollection('invoices').forEach(i => { if (i.customer) names.add(i.customer); });
             dl.innerHTML = Array.from(names).sort().map(n => `<option value="${n}"></option>`).join('');
+            const quickSel = document.getElementById('suppliers-quick-select');
+            if (quickSel) {
+                quickSel.innerHTML = '<option value="">Select company...</option>' + Array.from(names).sort().map(n => `<option value="${n}">${n}</option>`).join('');
+            }
+        }
+
+        function addSupplierQuick() {
+            const sel = document.getElementById('suppliers-quick-select');
+            const name = normalizeName(sel ? sel.value : '');
+            if (!name) return notify('Select a company to add', 'error');
+            const existing = LocalDB.getCollection('suppliers');
+            if (existing.some(s => normalizeName(s.name) === name)) {
+                return notify('Supplier already exists', 'warn');
+            }
+            addToCollection('suppliers', { name });
+            notify('Supplier added');
+            refreshCompaniesDatalist();
         }
 
         // Printing helpers
