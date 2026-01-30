@@ -1154,6 +1154,44 @@
             const fieldMap = { expenses:'amount', investments:'amount', invoices:'amount', exchange:'toAmt', cash:'amount', outstanding:'amount' };
             const field = fieldMap[collection];
             if (!field) return '';
+            // Invoices: monthly Paid vs Unpaid columns
+            if (collection === 'invoices') {
+                const monthly = new Map();
+                rows.forEach(r => {
+                    const key = getMonthKey(r.date || r.createdAt);
+                    const amt = parseFloat(r.amount) || 0;
+                    const isPaid = (r.paid === 'Yes');
+                    const cur = monthly.get(key) || { paid:0, unpaid:0 };
+                    if (isPaid) cur.paid += amt; else cur.unpaid += amt;
+                    monthly.set(key, cur);
+                });
+                if (!monthly.size) return '';
+                const rowsHtml = Array.from(monthly.entries()).sort(([a],[b]) => a.localeCompare(b))
+                    .map(([mon, o]) => {
+                        const total = (o.paid||0) + (o.unpaid||0);
+                        return `<tr><td style="padding:6px;border-bottom:1px solid #e5e7eb">${mon}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.paid||0)}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.unpaid||0)}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(total)}</td></tr>`;
+                    })
+                    .join('');
+                return `<div style="margin-top:12px"><div style="font-weight:600;margin-bottom:6px">Monthly Breakdown</div><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Month</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">Paid</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">Unpaid</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">Total</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+            }
+            // Exchange: monthly From vs To columns
+            if (collection === 'exchange') {
+                const monthly = new Map();
+                rows.forEach(r => {
+                    const key = getMonthKey(r.date || r.createdAt);
+                    const from = parseFloat(r.fromAmt) || 0;
+                    const to = parseFloat(r.toAmt) || 0;
+                    const cur = monthly.get(key) || { from:0, to:0 };
+                    cur.from += from; cur.to += to;
+                    monthly.set(key, cur);
+                });
+                if (!monthly.size) return '';
+                const rowsHtml = Array.from(monthly.entries()).sort(([a],[b]) => a.localeCompare(b))
+                    .map(([mon, o]) => `<tr><td style="padding:6px;border-bottom:1px solid #e5e7eb">${mon}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.from||0)}</td><td style="padding:6px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(o.to||0)}</td></tr>`)
+                    .join('');
+                return `<div style="margin-top:12px"><div style="font-weight:600;margin-bottom:6px">Monthly Breakdown</div><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb">Month</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">From Total</th><th style="text-align:right;padding:6px;border-bottom:1px solid #e5e7eb">To Total</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+            }
+            // Default: single Total column per month
             const monthly = new Map();
             rows.forEach(r => {
                 const key = getMonthKey(r.date || r.createdAt);
