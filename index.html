@@ -208,7 +208,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div class="form-group">
                         <label class="form-label">Description</label>
-                        <input type="text" id="expense-desc" class="input" placeholder="Expense description">
+                        <input type="text" id="expense-desc" class="input" placeholder="Expense description" list="expenses-list">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Amount</label>
@@ -270,6 +270,16 @@
                 </div>
                 <div id="investments-table"></div>
                 <div id="investments-totals" class="text-sm text-gray-300 mt-2"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div class="glass p-4">
+                        <h3 class="font-bold mb-2">Haji Hayat</h3>
+                        <div id="investments-hayat-table"></div>
+                    </div>
+                    <div class="glass p-4">
+                        <h3 class="font-bold mb-2">Abbas</h3>
+                        <div id="investments-abbas-table"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -484,6 +494,26 @@
 
     <!-- Notification -->
     <div id="notification" class="notification"></div>
+    <!-- Datalists -->
+    <datalist id="expenses-list">
+        <option value="Insurance"></option>
+        <option value="Store Rent"></option>
+        <option value="Utilities"></option>
+        <option value="Electricity"></option>
+        <option value="Water"></option>
+        <option value="Internet"></option>
+        <option value="Maintenance"></option>
+        <option value="Supplies"></option>
+        <option value="Salaries"></option>
+        <option value="Taxes"></option>
+        <option value="Marketing"></option>
+        <option value="Waste Disposal"></option>
+        <option value="Security"></option>
+        <option value="Cleaning"></option>
+        <option value="Licenses"></option>
+        <option value="Repairs"></option>
+        <option value="Bank Fees"></option>
+    </datalist>
     <!-- Edit Modal -->
     <div id="edit-modal" class="modal">
         <div class="modal-content">
@@ -920,10 +950,54 @@
                 html += '</tbody></table>';
                 container.innerHTML = html;
                 updateTotals(collection, data);
+                if (collection === 'invoices') {
+                    refreshInvestmentsSplit();
+                }
             } catch (e) {
                 console.warn('Table render error:', e);
                 container.innerHTML = '<p class="text-red-400">Error rendering table</p>';
             }
+        }
+
+        function renderTableToContainer(collection, data, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            if (!Array.isArray(data) || data.length === 0) {
+                            const total = (o.paid||0) + (o.unpaid||0);
+                            const gst = total * getGstRate();
+                            return `<tr><td style=\"padding:6px;border-bottom:1px solid #e5e7eb\">${mon}</td><td style=\"padding:6px;border-bottom:1px solid #e5e7eb;text-align:right\">${formatCurrency(o.paid||0)}</td><td style=\"padding:6px;border-bottom:1px solid #e5e7eb;text-align:right\">${formatCurrency(o.unpaid||0)}</td><td style=\"padding:6px;border-bottom:1px solid #e5e7eb;text-align:right\">${formatCurrency(gst)}</td><td style=\"padding:6px;border-bottom:1px solid #e5e7eb;text-align:right\">${formatCurrency(total)}</td></tr>`;
+            }
+            const schema = Schema[collection];
+                    return `<div style=\"margin-top:12px\"><div style=\"font-weight:600;margin-bottom:6px\">Monthly Breakdown</div><table style=\"width:100%;border-collapse:collapse\"><thead><tr><th style=\"text-align:left;padding:6px;border-bottom:1px solid #e5e7eb\">Month</th><th style=\"text-align:right;padding:6px;border-bottom:1px solid #e5e7eb\">Paid</th><th style=\"text-align:right;padding:6px;border-bottom:1px solid #e5e7eb\">Unpaid</th><th style=\"text-align:right;padding:6px;border-bottom:1px solid #e5e7eb\">GST</th><th style=\"text-align:right;padding:6px;border-bottom:1px solid #e5e7eb\">Total</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+            const cols = (schema && schema.columns) ? schema.columns : Object.keys(data[0] || {}).filter(k => k !== 'id' && k !== 'createdAt').map(k => ({ key: k, label: k }));
+            html += '<thead><tr>' + cols.map(c => `<th>${c.label}</th>`).join('') + '<th>Actions</th></tr></thead><tbody>';
+            data.forEach(row => {
+                html += '<tr>';
+                cols.forEach(c => {
+                    let val = row[c.key];
+                    if (c.type === 'currency') val = formatCurrency(val);
+                    else if (c.type === 'date') val = formatDate(val);
+                    html += `<td>${(val ?? 'N/A')}</td>`;
+                });
+                const id = row.id || '';
+                html += `<td class="flex gap-2">
+                    <button class="btn btn-primary toolbar-btn no-print" onclick="openEditModal('${collection}', '${id}')"><i class='fas fa-pen'></i></button>
+                    <button class="btn btn-danger toolbar-btn no-print" onclick="deleteFromCollection('${collection}', '${id}')"><i class='fas fa-trash'></i></button>
+                    <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForRow('${collection}', '${id}')"><i class='fas fa-eye'></i></button>
+                    <button class="btn btn-primary toolbar-btn no-print" onclick="printRow('${collection}', '${id}')"><i class='fas fa-print'></i></button>
+                </td>`;
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function refreshInvestmentsSplit() {
+            const rows = LocalDB.getCollection('investments');
+            const hayat = rows.filter(r => r.investor === 'Haji Hayat');
+            const abbas = rows.filter(r => r.investor === 'Abbas');
+            renderTableToContainer('investments', hayat, 'investments-hayat-table');
+            renderTableToContainer('investments', abbas, 'investments-abbas-table');
         }
 
         // Edit Modal Logic
