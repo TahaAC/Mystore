@@ -2,11 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Gulistan - Management System</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1e3a8a">
+    <title>Gulistan Supermarket & Halal Meat - Management System</title>
     <link rel="icon" href="logo.png" type="image/png">
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -21,14 +24,20 @@
             --glass: rgba(15, 23, 42, 0.7);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; width: 100%; }
         body {
-            font-family: 'Segoe UI', Tahoma, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #020617 0%, #1e293b 100%);
             color: #f1f5f9;
             min-height: 100vh;
+            -webkit-user-select: text;
+            user-select: text;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         .glass {
             background: var(--glass);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(59, 130, 246, 0.2);
             border-radius: 8px;
@@ -42,6 +51,9 @@
             font-weight: 600;
             transition: all 0.2s;
             color: white;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
         }
         .btn-primary { background: var(--secondary); }
         .btn-primary:hover { background: #2563eb; }
@@ -57,6 +69,29 @@
             background: rgba(0, 0, 0, 0.3);
             color: white;
             font-size: 14px;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        /* Safari date/time input styling */
+        input[type="date"],
+        input[type="time"],
+        input[type="datetime-local"],
+        input[type="month"],
+        input[type="week"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        /* Safari number input remove spinners */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
         }
         .input:focus { outline: none; border-color: var(--secondary); }
         table {
@@ -66,37 +101,12 @@
         }
         th {
             background: rgba(0, 0, 0, 0.3);
-            // Simple search bindings per tab
             text-align: left;
             border-bottom: 2px solid var(--secondary);
             font-weight: 600;
         }
-                    if (tab === 'exchange') {
-                        applyExchangeFilters();
-                    } else {
-                        const q = input.value.toLowerCase();
-                        const rows = LocalDB.getCollection(tab);
-                        const filtered = rows.filter(r => JSON.stringify(r).toLowerCase().includes(q));
-                        renderTable(tab, filtered);
-                    }
         tr:hover { background: rgba(59, 130, 246, 0.05); }
         .badge {
-
-            // Exchange filters
-            function applyExchangeFilters() {
-                const q = (document.getElementById('exchange-search')?.value || '').toLowerCase();
-                const svc = document.getElementById('exchange-service-filter')?.value || 'all';
-                const cash = document.getElementById('exchange-cash-filter')?.value || 'all';
-                let rows = LocalDB.getCollection('exchange');
-                if (q) rows = rows.filter(r => JSON.stringify(r).toLowerCase().includes(q));
-                if (svc !== 'all') rows = rows.filter(r => (r.service === svc));
-                if (cash !== 'all') rows = rows.filter(r => (r.cashType === cash));
-                renderTable('exchange', rows);
-            }
-            const excSvc = document.getElementById('exchange-service-filter');
-            const excCash = document.getElementById('exchange-cash-filter');
-            excSvc && excSvc.addEventListener('change', applyExchangeFilters);
-            excCash && excCash.addEventListener('change', applyExchangeFilters);
             display: inline-block;
             padding: 4px 12px;
             border-radius: 12px;
@@ -105,6 +115,30 @@
         }
         .badge-success { background: rgba(16, 185, 129, 0.2); color: #34d399; }
         .badge-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .tab-btn {
+            padding: 8px 16px;
+            background: rgba(59, 130, 246, 0.2);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            margin-right: 8px;
+        }
+        .tab-btn.active {
+            background: var(--secondary);
+        }
+        .tab-btn:hover {
+            background: var(--secondary);
+        }
+        .tab-content {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
         .modal {
             display: none;
             position: fixed;
@@ -122,6 +156,8 @@
             border-radius: 12px;
             width: 90%;
             max-width: 500px;
+            max-height: 85vh;
+            overflow-y: auto;
             border: 1px solid rgba(59, 130, 246, 0.2);
         }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
@@ -185,6 +221,154 @@
         }
         .print-header { display: none; text-align: center; margin-bottom: 16px; }
         .toolbar-btn { font-size: 12px; padding: 6px 10px; }
+        
+        /* Mobile Responsive Design */
+        @media (max-width: 768px) {
+            body { font-size: 14px; }
+            .max-w-7xl { padding: 8px; }
+            h1 { font-size: 24px !important; }
+            h2 { font-size: 18px !important; }
+            h3 { font-size: 16px !important; }
+            h4, h5, h6 { font-size: 14px !important; }
+            .glass { padding: 12px !important; margin-bottom: 12px !important; }
+            .modal-content {
+                width: 95%;
+                max-width: 100%;
+                padding: 20px;
+                max-height: 90vh;
+            }
+            .modal-header { margin-bottom: 15px; }
+            .form-group { margin-bottom: 12px; }
+            .form-label { font-size: 12px; }
+            .input { padding: 8px; font-size: 14px; }
+            .btn { padding: 8px 12px; font-size: 12px; }
+            .toolbar-btn { font-size: 11px; padding: 4px 6px; }
+            table { margin: 12px 0; }
+            th, td { padding: 6px 4px !important; font-size: 12px; }
+            .tab-btn { padding: 6px 12px; font-size: 12px; margin-right: 4px; }
+            .nav-tab { padding: 8px 12px; font-size: 12px; }
+            .badge { font-size: 11px; padding: 3px 10px; }
+            .notification { top: 10px; right: 10px; padding: 10px 15px; font-size: 12px; }
+            .text-sm { font-size: 12px !important; }
+            .text-xs { font-size: 10px !important; }
+            .flex { flex-wrap: wrap; }
+            .gap-4 { gap: 8px; }
+            .gap-2 { gap: 4px; }
+            .overflow-x-auto { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .grid { gap: 8px !important; }
+            
+            /* Responsive grid columns */
+            .grid-cols-1.md\:grid-cols-4 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+            .grid-cols-1.md\:grid-cols-7 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+            .grid-cols-1.md\:grid-cols-3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+            
+            /* Action buttons stack on mobile */
+            .flex.gap-2 { flex-wrap: wrap; }
+            
+            /* Ensure company group headers are readable */
+            [style*="display:flex"][style*="justify-content:space-between"] {
+                flex-direction: column;
+                gap: 8px !important;
+            }
+            
+            /* Make tables scrollable with better UX */
+            table thead tr { display: table; width: 100%; table-layout: fixed; }
+            table tbody tr { display: table; width: 100%; table-layout: fixed; }
+        }
+        
+        @media (max-width: 480px) {
+            body { font-size: 13px; }
+            h1 { font-size: 20px !important; }
+            h2 { font-size: 16px !important; }
+            h3 { font-size: 14px !important; }
+            h4, h5, h6 { font-size: 12px !important; }
+            .glass { padding: 10px !important; margin-bottom: 10px !important; }
+            .modal-content { padding: 15px; }
+            .modal-header { margin-bottom: 15px; }
+            .form-label { font-size: 11px; }
+            .form-group { margin-bottom: 10px; }
+            .input { padding: 6px; font-size: 13px; }
+            .btn { padding: 6px 10px; font-size: 11px; }
+            .toolbar-btn { font-size: 10px; padding: 3px 5px; }
+            .nav-tab { padding: 6px 10px; font-size: 11px; }
+            .tab-btn { padding: 4px 10px; font-size: 11px; margin-right: 2px; }
+            th, td { padding: 4px 2px !important; font-size: 11px; }
+            .badge { font-size: 10px; padding: 2px 8px; }
+            .notification { top: 8px; right: 8px; padding: 8px 12px; font-size: 11px; }
+            .text-sm { font-size: 11px !important; }
+            .text-xs { font-size: 9px !important; }
+            .text-2xl { font-size: 18px !important; }
+            .text-3xl { font-size: 20px !important; }
+            .flex.items-center.justify-between { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .form-group { margin-bottom: 10px; }
+            
+            /* Vertical layout for form groups */
+            .grid { grid-template-columns: 1fr !important; }
+            
+            /* Stack company header info vertically */
+            [style*="display:flex"] { flex-wrap: wrap; }
+        }
+        
+        /* Extra small devices (320px and below) */
+        @media (max-width: 340px) {
+            body { font-size: 12px; }
+            h1 { font-size: 18px !important; }
+            h2 { font-size: 14px !important; }
+            h3 { font-size: 12px !important; }
+            .glass { padding: 8px !important; margin-bottom: 8px !important; }
+            .modal-content { padding: 12px; }
+            .form-label { font-size: 10px; }
+            .input { padding: 5px; font-size: 12px; }
+            .btn { padding: 5px 8px; font-size: 10px; }
+            .toolbar-btn { font-size: 9px; padding: 2px 4px; }
+            .nav-tab { padding: 5px 8px; font-size: 10px; }
+            .tab-btn { padding: 3px 8px; font-size: 10px; }
+            th, td { padding: 3px 1px !important; font-size: 10px; }
+            .badge { font-size: 9px; padding: 1px 6px; }
+            .text-sm { font-size: 10px !important; }
+            .text-xs { font-size: 8px !important; }
+            .text-2xl { font-size: 16px !important; }
+            .text-3xl { font-size: 18px !important; }
+        }
+        
+        /* Touch-friendly adjustments */
+        @media (hover: none) and (pointer: coarse) {
+            .btn { padding: 12px 16px; min-height: 44px; }
+            .input { padding: 12px; min-height: 44px; }
+            .tab-btn { padding: 10px 16px; min-height: 44px; }
+            .toolbar-btn { min-height: 40px; min-width: 40px; }
+            th, td { padding: 8px 6px !important; }
+        }
+        
+        /* Cross-browser compatibility tweaks */
+        select { 
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            background-size: 20px;
+            padding-right: 32px;
+        }
+        
+        /* Firefox focus outline fix */
+        @-moz-document url-prefix() {
+            .input { -moz-outline: none; }
+        }
+        
+        /* Edge smooth scrolling */
+        html { scroll-behavior: smooth; }
+        
+        /* Safari text selection styling */
+        ::selection {
+            background: rgba(59, 130, 246, 0.5);
+            color: white;
+        }
+        ::-moz-selection {
+            background: rgba(59, 130, 246, 0.5);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -195,7 +379,7 @@
                 <div class="flex items-center gap-3">
                     <img src="logo.png" alt="Logo" class="w-10 h-10 rounded-xl object-cover" onerror="this.style.display='none'">
                     <div>
-                        <h1 class="text-3xl font-bold mb-1">Gulistan</h1>
+                        <h1 class="text-3xl font-bold mb-1">Gulistan Supermarket & Halal Meat</h1>
                         <p class="text-gray-400 text-sm">Management System</p>
                     </div>
                 </div>
@@ -217,7 +401,6 @@
                 <button class="nav-tab" data-tab="exchange"><i class="fas fa-exchange-alt mr-2"></i>Exchange</button>
                 <button class="nav-tab" data-tab="cash"><i class="fas fa-coins mr-2"></i>Cash</button>
                 <button class="nav-tab" data-tab="outstanding"><i class="fas fa-star mr-2"></i>Outstanding</button>
-                <button class="nav-tab" data-tab="reports"><i class="fas fa-chart-line mr-2"></i>Reports</button>
             </div>
         </div>
 
@@ -243,14 +426,16 @@
                     </div>
                 </div>
                 <div id="expenses-totals" class="text-sm text-gray-300"></div>
-                <div id="expenses-table"></div>
+                <div class="overflow-x-auto">
+                    <div id="expenses-table"></div>
+                </div>
             </div>
         </div>
 
         <div class="tab" id="tab-investments">
             <div class="glass p-6 rounded-xl">
                 <h2 class="text-2xl font-bold mb-4"><i class="fas fa-hand-holding-usd mr-2"></i>Investments</h2>
-                <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-7 gap-4 mb-6">
                     <div class="form-group">
                         <label class="form-label">Description</label>
                         <input type="text" id="inv-name" class="input" placeholder="Investment description">
@@ -267,6 +452,14 @@
                         <input type="number" id="inv-amount" class="input" placeholder="0.00">
                     </div>
                     <div class="form-group">
+                        <label class="form-label">Paid to</label>
+                        <select id="inv-paid-to" class="input">
+                            <option>Shop</option>
+                            <option>Real Estate</option>
+                            <option>Cash</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Date</label>
                         <input type="date" id="inv-date" class="input">
                     </div>
@@ -281,24 +474,54 @@
                         <button class="btn btn-primary w-full" onclick="addInvestment()"><i class="fas fa-plus mr-2"></i>Add</button>
                     </div>
                 </div>
-                <div class="flex items-center gap-2 mb-2">
-                    <input id="investments-search" class="input" placeholder="Search investments" style="max-width:320px">
-                    <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForTable('investments')"><i class="fas fa-eye mr-1"></i>Preview</button>
-                    <button class="btn btn-primary toolbar-btn no-print" onclick="printTable('investments')"><i class="fas fa-print mr-1"></i>Print</button>
-                    <button class="btn btn-primary toolbar-btn no-print" onclick="exportCSV('investments')"><i class="fas fa-file-export mr-1"></i>Export</button>
-                    <button class="btn btn-primary toolbar-btn no-print" onclick="shareTable('investments')"><i class="fas fa-share-alt mr-1"></i>Share</button>
+
+                <!-- Tabs for switching views -->
+                <div class="flex gap-2 mb-4 border-b border-gray-600 pb-2">
+                    <button class="tab-btn active" onclick="switchInvTab('all')" id="tab-btn-all">All</button>
+                    <button class="tab-btn" onclick="switchInvTab('hayat')" id="tab-btn-hayat">Haji Hayat</button>
+                    <button class="tab-btn" onclick="switchInvTab('abbas')" id="tab-btn-abbas">Abbas</button>
                 </div>
-                <div id="investments-table"></div>
-                <div id="investments-totals" class="text-sm text-gray-300 mt-2"></div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <div class="glass p-4">
-                        <h3 class="font-bold mb-2">Haji Hayat</h3>
+
+                <!-- All Investments -->
+                <div id="inv-all" class="tab-content">
+                    <div class="flex items-center gap-2 mb-2">
+                        <input id="investments-search" class="input" placeholder="Search investments" style="max-width:320px">
+                        <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForTable('investments')"><i class="fas fa-eye mr-1"></i>Preview</button>
+                        <button class="btn btn-primary toolbar-btn no-print" onclick="printTable('investments')"><i class="fas fa-print mr-1"></i>Print</button>
+                        <button class="btn btn-success toolbar-btn no-print" onclick="exportInvestmentsPDF('all')"><i class="fas fa-file-pdf mr-1"></i>PDF</button>
+                        <button class="btn btn-primary toolbar-btn no-print" onclick="exportCSV('investments')"><i class="fas fa-file-export mr-1"></i>Export</button>
+                        <button class="btn btn-primary toolbar-btn no-print" onclick="shareTable('investments')"><i class="fas fa-share-alt mr-1"></i>Share</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <div id="investments-table"></div>
+                    </div>
+                    <div id="investments-totals" class="text-sm text-gray-300 mt-2 font-semibold"></div>
+                </div>
+
+                <!-- Haji Hayat -->
+                <div id="inv-hayat" class="tab-content" style="display:none;">
+                    <div class="flex items-center gap-2 mb-2">
+                        <input id="inv-hayat-search" class="input" placeholder="Search Haji Hayat" style="max-width:320px">
+                        <button class="btn btn-primary toolbar-btn no-print" onclick="printInvestorTab('hayat')"><i class="fas fa-print mr-1"></i>Print</button>
+                        <button class="btn btn-success toolbar-btn no-print" onclick="exportInvestmentsPDF('hayat')"><i class="fas fa-file-pdf mr-1"></i>PDF</button>
+                    </div>
+                    <div class="overflow-x-auto">
                         <div id="investments-hayat-table"></div>
                     </div>
-                    <div class="glass p-4">
-                        <h3 class="font-bold mb-2">Abbas</h3>
+                    <div id="inv-hayat-totals" class="text-sm text-gray-300 mt-2 font-semibold"></div>
+                </div>
+
+                <!-- Abbas -->
+                <div id="inv-abbas" class="tab-content" style="display:none;">
+                    <div class="flex items-center gap-2 mb-2">
+                        <input id="inv-abbas-search" class="input" placeholder="Search Abbas" style="max-width:320px">
+                        <button class="btn btn-primary toolbar-btn no-print" onclick="printInvestorTab('abbas')"><i class="fas fa-print mr-1"></i>Print</button>
+                        <button class="btn btn-success toolbar-btn no-print" onclick="exportInvestmentsPDF('abbas')"><i class="fas fa-file-pdf mr-1"></i>PDF</button>
+                    </div>
+                    <div class="overflow-x-auto">
                         <div id="investments-abbas-table"></div>
                     </div>
+                    <div id="inv-abbas-totals" class="text-sm text-gray-300 mt-2 font-semibold"></div>
                 </div>
             </div>
         </div>
@@ -306,7 +529,7 @@
         <div class="tab" id="tab-suppliers">
             <div class="glass p-6 rounded-xl">
                 <h2 class="text-2xl font-bold mb-4"><i class="fas fa-truck mr-2"></i>Suppliers</h2>
-                <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div class="form-group">
                         <label class="form-label">Name</label>
                         <input type="text" id="supp-name" class="input" placeholder="Company name" list="companies-list">
@@ -316,20 +539,8 @@
                         <input type="text" id="supp-phone" class="input" placeholder="0422622642">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Date</label>
-                        <input type="date" id="supp-date" class="input">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Paid On</label>
-                        <input type="date" id="supp-paid-on" class="input">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Desc</label>
-                        <input type="text" id="supp-desc" class="input" placeholder="Description">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Details</label>
-                        <input type="text" id="supp-details" class="input" placeholder="Details">
+                        <label class="form-label">Product Details</label>
+                        <input type="text" id="supp-details" class="input" placeholder="Product Details">
                     </div>
                     <div class="form-group flex items-end">
                         <button class="btn btn-primary w-full" onclick="addSupplier()"><i class="fas fa-plus mr-2"></i>Add</button>
@@ -347,7 +558,9 @@
                     <button class="btn btn-primary toolbar-btn no-print" onclick="exportCSV('suppliers')"><i class="fas fa-file-export mr-1"></i>Export</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="shareTable('suppliers')"><i class="fas fa-share-alt mr-1"></i>Share</button>
                 </div>
-                <div id="suppliers-table"></div>
+                <div class="overflow-x-auto">
+                    <div id="suppliers-table"></div>
+                </div>
                 <div id="suppliers-totals" class="text-sm text-gray-300 mt-2"></div>
             </div>
         </div>
@@ -378,13 +591,19 @@
                     <div class="form-group">
                         <label class="form-label">Paid</label>
                         <select id="inv-paid" class="input">
-                            <option value="No">No</option>
-                            <option value="Yes">Yes</option>
+                            <option value="No">Not Paid</option>
+                            <option value="Full">Paid Full</option>
+                            <option value="Half">Paid Half</option>
+                            <option value="Partially">Paid Partially</option>
                         </select>
                     </div>
                     <div class="form-group">
+                        <label class="form-label">Amount Paid</label>
+                        <input type="number" id="inv-amount-paid" class="input" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Paid On</label>
-                        <input type="date" id="inv-paid-on" class="input" disabled>
+                        <input type="date" id="inv-paid-on" class="input">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Payment Method</label>
@@ -397,6 +616,10 @@
                     <div class="form-group">
                         <label class="form-label">BSB</label>
                         <input type="text" id="inv-bsb" class="input" placeholder="033174">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Account</label>
+                        <input type="text" id="inv-account" class="input" placeholder="Account number">
                     </div>
                     <div class="form-group flex items-end">
                         <button class="btn btn-primary w-full" onclick="addInvoice()"><i class="fas fa-plus mr-2"></i>Add</button>
@@ -413,7 +636,9 @@
                     <button class="btn btn-primary toolbar-btn no-print" onclick="exportCSV('invoices')"><i class="fas fa-file-export mr-1"></i>Export</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="shareTable('invoices')"><i class="fas fa-share-alt mr-1"></i>Share</button>
                 </div>
-                <div id="invoices-table"></div>
+                <div class="overflow-x-auto">
+                    <div id="invoices-table"></div>
+                </div>
                 <div id="invoices-totals" class="text-sm text-gray-300 mt-2"></div>
             </div>
         </div>
@@ -476,7 +701,9 @@
                     <button class="btn btn-primary toolbar-btn no-print" onclick="exportCSV('exchange')"><i class="fas fa-file-export mr-1"></i>Export</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="shareTable('exchange')"><i class="fas fa-share-alt mr-1"></i>Share</button>
                 </div>
-                <div id="exchange-table"></div>
+                <div class="overflow-x-auto">
+                    <div id="exchange-table"></div>
+                </div>
                 <div id="exchange-totals" class="text-sm text-gray-300 mt-2"></div>
             </div>
         </div>
@@ -505,7 +732,9 @@
                     </div>
                 </div>
                 <div id="cash-totals" class="text-sm text-gray-300"></div>
-                <div id="cash-table"></div>
+                <div class="overflow-x-auto">
+                    <div id="cash-table"></div>
+                </div>
             </div>
         </div>
 
@@ -530,43 +759,8 @@
                     </div>
                 </div>
                 <div id="outstanding-totals" class="text-sm text-gray-300"></div>
-                <div id="outstanding-table"></div>
-            </div>
-        </div>
-
-        <div class="tab" id="tab-reports">
-            <div class="glass p-6 rounded-xl">
-                <h2 class="text-2xl font-bold mb-4"><i class="fas fa-chart-line mr-2"></i>Reports</h2>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <div class="form-group">
-                        <label class="form-label">From</label>
-                        <input type="date" id="rep-from" class="input">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">To</label>
-                        <input type="date" id="rep-to" class="input">
-                    </div>
-                    <div class="form-group flex items-end">
-                        <button class="btn btn-primary w-full" onclick="generateReports()"><i class="fas fa-filter mr-2"></i>Generate</button>
-                    </div>
-                    <div class="form-group flex items-end">
-                        <div class="flex gap-2 w-full">
-                            <button class="btn btn-primary w-1/2 no-print" onclick="syncAllFromFirebase()"><i class="fas fa-cloud-download-alt mr-2"></i>Sync Cloud</button>
-                            <button class="btn btn-primary w-1/2 no-print" onclick="seedDemoData()"><i class="fas fa-database mr-2"></i>Seed Demo</button>
-                            <button class="btn btn-primary w-1/2 no-print" onclick="checkCloudStatus()"><i class="fas fa-search mr-2"></i>Check Cloud</button>
-                        </div>
-                    </div>
-                </div>
-                <div id="cloud-status" class="text-sm text-gray-300 mt-2"></div>
-                <div id="reports-table"></div>
-                <div class="glass p-4 mt-4">
-                    <div class="font-bold mb-2">Schema Match (Advanced)</div>
-                    <p class="text-sm text-gray-300 mb-2">Define field name mappings per tab to match your Firebase schema. Example: { "invoices": { "customer": "company" } }</p>
-                    <textarea id="schema-map-json" class="input" style="min-height:120px" placeholder='{"invoices":{"customer":"company"}}'></textarea>
-                    <div class="flex gap-2 mt-2">
-                        <button class="btn btn-primary no-print" onclick="loadSchemaMapUI()"><i class="fas fa-download mr-2"></i>Load Mapping</button>
-                        <button class="btn btn-primary no-print" onclick="saveSchemaMapUI()"><i class="fas fa-save mr-2"></i>Save Mapping</button>
-                    </div>
+                <div class="overflow-x-auto">
+                    <div id="outstanding-table"></div>
                 </div>
             </div>
         </div>
@@ -602,9 +796,48 @@
                 <button class="modal-close" onclick="closeEditModal()">&times;</button>
             </div>
             <form id="edit-form"></form>
-            <div class="mt-4 flex justify-end gap-2">
-                <button class="btn btn-danger" onclick="closeEditModal()" type="button">Cancel</button>
-                <button class="btn btn-success" onclick="saveEdits(event)" type="submit">Save</button>
+            <div class="mt-4 flex justify-between gap-2">
+                <button class="btn btn-primary" id="payment-history-btn" style="display:none;" onclick="openPaymentHistoryModal(editState.id, document.querySelector('[name=\'num\']')?.value)" type="button"><i class="fas fa-history mr-2"></i>Payment History</button>
+                <div class="flex gap-2">
+                    <button class="btn btn-danger" onclick="closeEditModal()" type="button">Cancel</button>
+                    <button class="btn btn-success" onclick="saveEdits(event)" type="submit">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment History Modal -->
+    <div id="payment-history-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="text-xl font-bold">Payment History</h3>
+                <button class="modal-close" onclick="closePaymentHistoryModal()">&times;</button>
+            </div>
+            <div id="payment-history-content" style="max-height: 400px; overflow-y: auto;"></div>
+            <div class="mt-4 mb-4">
+                <h4 class="text-lg font-bold mb-3">Record New Payment</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="form-group">
+                        <label class="form-label">Amount</label>
+                        <input type="number" id="payment-amount" class="input" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Paid On</label>
+                        <input type="date" id="payment-date" class="input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Method</label>
+                        <select id="payment-method" class="input">
+                            <option value="cash">Cash</option>
+                            <option value="bank">Bank</option>
+                            <option value="card">Card</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button class="btn btn-danger" onclick="closePaymentHistoryModal()" type="button">Close</button>
+                <button class="btn btn-success" onclick="recordPayment()" type="button">Record Payment</button>
             </div>
         </div>
     </div>
@@ -648,7 +881,8 @@
                 catch(e) { return []; }
             },
             saveCollection(name, data) {
-                localStorage.setItem(`gulistan_${name}`, JSON.stringify(data));
+                try { localStorage.setItem(`gulistan_${name}`, JSON.stringify(data)); }
+                catch(e) { console.warn('LocalDB save error (Tracking Prevention?):', e); }
             },
             addDoc(name, data) {
                 const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -699,16 +933,19 @@
             investments: ['investments', 'Investments', 'Investment'],
             suppliers: ['suppliers', 'Suppliers', 'Supplier'],
             invoices: ['invoices', 'Invoices', 'Invoice'],
+            payments: ['payments', 'Payments', 'Payment'],
             exchange: ['exchange', 'Exchange'],
             cash: ['cash', 'Cash'],
-            outstanding: ['customers', 'Outstanding', 'outstanding']
+            outstanding: ['customers', 'Outstanding', 'outstanding'],
+            outstanding_payments: ['customer_payments', 'outstanding_payments', 'OutstandingPayments']
         };
         const CloudNameCacheKey = 'gulistan_cloud_names';
         function getCloudNameCache() {
             try { return JSON.parse(localStorage.getItem(CloudNameCacheKey) || '{}'); } catch { return {}; }
         }
         function setCloudNameCache(obj) {
-            localStorage.setItem(CloudNameCacheKey, JSON.stringify(obj || {}));
+            try { localStorage.setItem(CloudNameCacheKey, JSON.stringify(obj || {})); }
+            catch(e) { console.warn('Cloud cache save error:', e); }
         }
         const resolveColl = (name) => {
             const cache = getCloudNameCache();
@@ -721,7 +958,8 @@
             try { return JSON.parse(localStorage.getItem(FieldMapKey) || '{}'); } catch { return {}; }
         }
         function setFieldMap(obj) {
-            localStorage.setItem(FieldMapKey, JSON.stringify(obj || {}));
+            try { localStorage.setItem(FieldMapKey, JSON.stringify(obj || {})); }
+            catch(e) { console.warn('Field map save error:', e); }
         }
         // Map a cloud doc to local keys
         function mapRead(collection, doc) {
@@ -749,6 +987,14 @@
                 mapped.date = mapped.date ?? doc.date ?? mapped.date;
                 mapped.paymentMethod = mapped.paymentMethod ?? doc.paymentMethod ?? mapped.paymentMethod;
                 mapped.bsb = mapped.bsb ?? doc.bsb ?? mapped.bsb;
+                // Set default amountPaid and amountUnpaid if missing
+                const totalAmt = parseFloat(mapped.amount) || 0;
+                if (typeof mapped.amountPaid === 'undefined' || mapped.amountPaid === null) {
+                    mapped.amountPaid = (mapped.paid === 'Full' || mapped.paid === 'Yes') ? totalAmt : 0;
+                }
+                if (typeof mapped.amountUnpaid === 'undefined' || mapped.amountUnpaid === null) {
+                    mapped.amountUnpaid = totalAmt - (parseFloat(mapped.amountPaid) || 0);
+                }
             }
             return mapped;
         }
@@ -771,7 +1017,7 @@
             if (collection === 'invoices') {
                 mapped.invoiceNumber = mapped.invoiceNumber ?? doc.num;
                 mapped.totalAmount = mapped.totalAmount ?? doc.amount;
-                mapped.status = mapped.status ?? ((doc.paid === 'Yes') ? 'paid' : 'unpaid');
+                mapped.status = mapped.status ?? ((doc.paid !== 'No') ? 'paid' : 'unpaid');
                 // Ensure numeric GST fields
                 if (typeof mapped.gstRate === 'undefined' && typeof doc.gstRate !== 'undefined') mapped.gstRate = doc.gstRate;
                 if (typeof mapped.gstAmount === 'undefined' && typeof doc.gstAmount !== 'undefined') mapped.gstAmount = doc.gstAmount;
@@ -779,6 +1025,12 @@
                 if (typeof mapped.amountPaid === 'undefined' && typeof doc.amountPaid !== 'undefined') mapped.amountPaid = doc.amountPaid;
                 if (typeof mapped.amountUnpaid === 'undefined' && typeof doc.amountUnpaid !== 'undefined') mapped.amountUnpaid = doc.amountUnpaid;
             }
+            // Remove undefined values before sending to Firebase
+            Object.keys(mapped).forEach(key => {
+                if (mapped[key] === undefined) {
+                    delete mapped[key];
+                }
+            });
             return mapped;
         }
 
@@ -797,6 +1049,7 @@
                     { key: 'name', label: 'Description' },
                     { label: 'Haji Hayat', type: 'currency', value: r => (r.investor === 'Haji Hayat' ? (parseFloat(r.amount)||0) : 0) },
                     { label: 'Abbas', type: 'currency', value: r => (r.investor === 'Abbas' ? (parseFloat(r.amount)||0) : 0) },
+                    { key: 'paidTo', label: 'Paid to' },
                     { key: 'date', label: 'Date', type: 'date' },
                     { key: 'method', label: 'Method' }
                 ],
@@ -810,10 +1063,7 @@
                 columns: [
                     { key: 'name', label: 'Name' },
                     { key: 'phone', label: 'Phone' },
-                    { key: 'date', label: 'Date', type: 'date' },
-                    { key: 'paidOn', label: 'Paid On', type: 'date' },
-                    { key: 'desc', label: 'Desc' },
-                    { key: 'details', label: 'Details' }
+                    { key: 'details', label: 'Product Details' }
                 ]
             },
             invoices: {
@@ -821,17 +1071,25 @@
                     { key: 'num', label: 'Invoice #' },
                     { key: 'customer', label: 'Company' },
                     { key: 'amount', label: 'Amount', type: 'currency' },
+                    { label: 'Amount Paid', type: 'currency', value: r => {
+                        const payments = LocalDB.getCollection('payments').filter(p => String(p.invoiceNum).trim() === String(r.num).trim());
+                        return payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                    }},
+                    { label: 'Balance', type: 'currency', value: r => {
+                        const total = parseFloat(r.amount) || 0;
+                        const payments = LocalDB.getCollection('payments').filter(p => String(p.invoiceNum).trim() === String(r.num).trim());
+                        const paid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                        return Math.max(0, total - paid);
+                    }},
                     { key: 'date', label: 'Date', type: 'date' },
-                    { key: 'paid', label: 'Paid' },
-                    { key: 'paidOn', label: 'Paid On', type: 'date' },
-                    { key: 'paymentMethod', label: 'Payment Method' },
-                    { key: 'bsb', label: 'BSB' }
+                    { key: 'paid', label: 'Status' },
+                    { key: 'paymentMethod', label: 'Payment Method' }
                 ],
                 totals: [
                     { key: 'amount', label: 'Total' },
-                    { label: 'Total GST', reducer: rows => rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0) * getGstRate() },
-                    { key: 'amount', label: 'Total Paid', filter: r => (r.paid === 'Yes') },
-                    { key: 'amount', label: 'Total Unpaid', filter: r => (r.paid !== 'Yes') }
+                    { key: 'amountPaid', label: 'Total Paid' },
+                    { key: 'amountUnpaid', label: 'Total Balance' },
+                    { label: 'Total GST', reducer: rows => rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0) * getGstRate() }
                 ]
             },
             exchange: {
@@ -869,9 +1127,51 @@
                 columns: [
                     { key: 'customer', label: 'Customer' },
                     { key: 'amount', label: 'Amount', type: 'currency' },
+                    { label: 'Amount Paid', type: 'currency', value: r => {
+                        const payments = LocalDB.getCollection('outstanding_payments').filter(p => String(p.outstandingId).trim() === String(r.id).trim());
+                        return payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                    }},
+                    { label: 'Balance', type: 'currency', value: r => {
+                        const total = parseFloat(r.amount) || 0;
+                        const payments = LocalDB.getCollection('outstanding_payments').filter(p => String(p.outstandingId).trim() === String(r.id).trim());
+                        const paid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                        return Math.max(0, total - paid);
+                    }},
                     { key: 'date', label: 'Date', type: 'date' }
                 ],
-                totals: [{ key: 'amount', label: 'Total' }]
+                totals: [
+                    { key: 'amount', label: 'Total Amount' },
+                    { label: 'Total Paid', reducer: rows => {
+                        const allPayments = LocalDB.getCollection('outstanding_payments');
+                        return allPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                    }},
+                    { label: 'Total Balance', reducer: rows => {
+                        const totalAmt = rows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+                        const allPayments = LocalDB.getCollection('outstanding_payments');
+                        const totalPaid = allPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                        return Math.max(0, totalAmt - totalPaid);
+                    }}
+                ]
+            },
+            outstanding_payments: {
+                columns: [
+                    { key: 'outstandingId', label: 'Outstanding ID' },
+                    { key: 'customer', label: 'Customer' },
+                    { key: 'amount', label: 'Amount Paid', type: 'currency' },
+                    { key: 'paidOn', label: 'Paid On', type: 'date' },
+                    { key: 'paymentMethod', label: 'Payment Method' }
+                ],
+                totals: [{ key: 'amount', label: 'Total Payments' }]
+            },
+            payments: {
+                columns: [
+                    { key: 'invoiceNum', label: 'Invoice #' },
+                    { key: 'customer', label: 'Company' },
+                    { key: 'amount', label: 'Amount Paid', type: 'currency' },
+                    { key: 'paidOn', label: 'Paid On', type: 'date' },
+                    { key: 'paymentMethod', label: 'Payment Method' }
+                ],
+                totals: [{ key: 'amount', label: 'Total Payments' }]
             }
         };
 
@@ -901,6 +1201,9 @@
             const tabEl = document.getElementById(`tab-${tabName}`);
             if (tabEl) tabEl.classList.add('active');
             if (button) button.classList.add('active');
+            // Save current tab to localStorage
+            try { localStorage.setItem('currentTab', tabName); }
+            catch(e) { console.warn('Tab save error:', e); }
         }
 
         function bindTabClicks() {
@@ -944,10 +1247,335 @@
             try {
                 await db.collection(resolveColl(collection)).doc(id).delete();
             } catch (e) {
-                console.warn('Firebase delete error (removed locally):', e);
-                notify(`Cloud delete failed for ${collection}: ${e.message || e}`, 'error');
+                // Firebase permissions may be restricted - data is deleted locally, sync disabled
+                if (e.code === 'permission-denied') {
+                    console.warn('Firebase permission denied for delete - using local storage only');
+                } else {
+                    console.warn('Firebase delete error (removed locally):', e);
+                    notify(`Cloud sync disabled for ${collection}`, 'warn');
+                }
             }
             loadCollection(collection);
+        }
+
+        function shareRecord(collection, id) {
+            const data = LocalDB.getDoc(collection, id);
+            if (!data) { notify('Record not found', 'error'); return; }
+            
+            // Create shareable text content
+            let shareText = '';
+            if (collection === 'invoices') {
+                shareText = `Invoice #${data.num}\nCompany: ${data.customer}\nTotal Amount: ${formatCurrency(data.amount)}\nPaid: ${data.paid}\nAmount Paid: ${formatCurrency(data.amountPaid)}\nAmount Unpaid: ${formatCurrency(data.amountUnpaid)}\nDate: ${formatDate(data.date)}`;
+                
+                // Include payment history
+                const payments = LocalDB.getCollection('payments').filter(p => p.invoiceNum === data.num);
+                if (payments.length > 0) {
+                    shareText += '\n\n--- Payment History ---';
+                    payments.forEach(p => {
+                        shareText += `\nDate: ${formatDate(p.paidOn)} | Amount: ${formatCurrency(p.amount)} | Method: ${p.paymentMethod}`;
+                    });
+                }
+            } else if (collection === 'expenses') {
+                shareText = `Expense\nCategory: ${data.category}\nAmount: ${formatCurrency(data.amount)}\nDescription: ${data.description}\nDate: ${formatDate(data.date)}`;
+            } else if (collection === 'investments') {
+                shareText = `Investment\nInvestor: ${data.investor}\nAmount: ${formatCurrency(data.amount)}\nPaid To: ${data.paidTo}\nDate: ${formatDate(data.date)}\nMethod: ${data.method}`;
+            } else {
+                shareText = JSON.stringify(data, null, 2);
+            }
+            
+            // Check if Web Share API is available
+            if (navigator.share) {
+                navigator.share({
+                    title: `${collection.charAt(0).toUpperCase() + collection.slice(1)} Record`,
+                    text: shareText
+                }).catch(err => console.log('Share cancelled or failed:', err));
+            } else {
+                // Fallback: Copy to clipboard
+                navigator.clipboard.writeText(shareText).then(() => {
+                    notify('Record copied to clipboard!', 'success');
+                }).catch(err => {
+                    notify('Could not copy to clipboard', 'error');
+                });
+            }
+        }
+
+        function toggleCompanyGroup(company) {
+            let currentState = false;
+            try {
+                currentState = sessionStorage.getItem(`expand_${company}`) !== 'false';
+            } catch (e) {
+                currentState = true;
+            }
+            try {
+                sessionStorage.setItem(`expand_${company}`, !currentState);
+            } catch (e) {
+                console.warn('Session storage blocked:', e.message);
+            }
+            const invoices = LocalDB.getCollection('invoices');
+            renderTable('invoices', invoices);
+        }
+
+        function togglePaymentHistory(invoiceId) {
+            const historyKey = `hist_${invoiceId}`;
+            let isShown = false;
+            try {
+                isShown = sessionStorage.getItem(historyKey) === 'true';
+            } catch (e) {
+                isShown = false;
+            }
+            try {
+                sessionStorage.setItem(historyKey, !isShown);
+            } catch (e) {
+                console.warn('Session storage blocked:', e.message);
+            }
+            // Re-render the invoices table to reflect history visibility
+            const invoices = LocalDB.getCollection('invoices');
+            renderTable('invoices', invoices);
+        }
+
+        function toggleOutstandingGroup(customer) {
+            let currentState = false;
+            try {
+                currentState = sessionStorage.getItem(`expand_out_${customer}`) !== 'false';
+            } catch (e) {
+                currentState = true;
+            }
+            try {
+                sessionStorage.setItem(`expand_out_${customer}`, !currentState);
+            } catch (e) {
+                console.warn('Session storage blocked:', e.message);
+            }
+            const outstanding = LocalDB.getCollection('outstanding');
+            renderTable('outstanding', outstanding);
+        }
+
+        function toggleOutstandingHistory(outstandingId) {
+            const historyKey = `out_hist_${outstandingId}`;
+            let isShown = false;
+            try {
+                isShown = localStorage.getItem(historyKey) === 'true';
+            } catch (e) {
+                // Handle Tracking Prevention
+                console.warn('Storage access blocked:', e.message);
+                isShown = false;
+            }
+            try {
+                localStorage.setItem(historyKey, !isShown);
+            } catch (e) {
+                console.warn('Storage access blocked:', e.message);
+            }
+            const outstanding = LocalDB.getCollection('outstanding');
+            renderTable('outstanding', outstanding);
+        }
+
+        function openOutstandingEditModal(id) {
+            const row = LocalDB.getDoc('outstanding', id);
+            if (!row) return notify('Record not found', 'error');
+            
+            const modal = document.getElementById('edit-modal');
+            modal.innerHTML = `
+                <div class="modal-content" style="max-height:90vh;overflow-y:auto">
+                    <div class="modal-header">
+                        <h3>Record Outstanding Payment</h3>
+                        <button class="modal-close" onclick="document.getElementById('edit-modal').classList.remove('active')">&times;</button>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Customer</label>
+                        <div style="padding:8px;background:rgba(0,0,0,0.2);border-radius:4px">${row.customer}</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Outstanding Amount</label>
+                        <div style="padding:8px;background:rgba(0,0,0,0.2);border-radius:4px">${formatCurrency(row.amount)}</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Payment Amount</label>
+                        <input type="number" id="out-pay-amount" class="input" placeholder="0.00" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Paid On</label>
+                        <input type="date" id="out-pay-date" class="input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Payment Method</label>
+                        <select id="out-pay-method" class="input">
+                            <option>Cash</option>
+                            <option>Bank Transfer</option>
+                            <option>Check</option>
+                            <option>Card</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-primary w-full" onclick="recordOutstandingPayment('${id}')">
+                            <i class='fas fa-save mr-2'></i>Record Payment
+                        </button>
+                    </div>
+                    <div style="margin-top:20px;border-top:1px solid rgba(59,130,246,0.2);padding-top:20px">
+                        <h4 style="margin-bottom:12px">Payment History</h4>
+                        <div id="out-payment-history-list" style="max-height:300px;overflow-y:auto"></div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('out-pay-date').valueAsDate = new Date();
+            displayOutstandingPaymentHistory(id);
+            modal.classList.add('active');
+        }
+
+        function displayOutstandingPaymentHistory(outstandingId) {
+            const payments = LocalDB.getCollection('outstanding_payments').filter(p => String(p.outstandingId).trim() === String(outstandingId).trim());
+            const container = document.getElementById('out-payment-history-list');
+            
+            if (payments.length === 0) {
+                container.innerHTML = '<p style="color:#9ca3af">No payments recorded yet</p>';
+                return;
+            }
+            
+            let html = '<table style="width:100%;border-collapse:collapse">';
+            html += '<tr style="border-bottom:1px solid rgba(59,130,246,0.2)"><th style="padding:6px;text-align:left">Date</th><th style="padding:6px;text-align:left">Amount</th><th style="padding:6px;text-align:left">Method</th><th style="padding:6px">Action</th></tr>';
+            payments.forEach(p => {
+                html += `<tr style="border-bottom:1px solid rgba(59,130,246,0.1)"><td style="padding:6px">${formatDate(p.paidOn)}</td><td style="padding:6px">${p.amount}</td><td style="padding:6px">${p.paymentMethod}</td><td style="padding:6px"><button class="btn btn-danger toolbar-btn" onclick="deleteOutstandingPayment('${p.id}', '${outstandingId}')"><i class='fas fa-trash'></i></button></td></tr>`;
+            });
+            html += '</table>';
+            container.innerHTML = html;
+        }
+
+        function recordOutstandingPayment(outstandingId) {
+            const amount = document.getElementById('out-pay-amount').value;
+            const paidOn = document.getElementById('out-pay-date').value;
+            const method = document.getElementById('out-pay-method').value;
+            
+            if (!amount || parseFloat(amount) <= 0) return notify('Enter valid amount', 'error');
+            if (!paidOn) return notify('Select paid on date', 'error');
+            
+            const outstanding = LocalDB.getDoc('outstanding', outstandingId);
+            const paymentData = {
+                outstandingId,
+                customer: outstanding.customer,
+                amount: parseFloat(amount),
+                paidOn,
+                paymentMethod: method
+            };
+            
+            addToCollection('outstanding_payments', paymentData);
+            displayOutstandingPaymentHistory(outstandingId);
+            document.getElementById('out-pay-amount').value = '';
+            notify('Payment recorded successfully', 'success');
+        }
+
+        function deleteOutstandingPayment(paymentId, outstandingId) {
+            if (!confirm('Delete this payment record?')) return;
+            deleteFromCollection('outstanding_payments', paymentId);
+            displayOutstandingPaymentHistory(outstandingId);
+            notify('Payment deleted', 'success');
+        }
+
+        let paymentHistoryState = { invoiceId: null, invoiceNum: null };
+
+        function openPaymentHistoryModal(invoiceId, invoiceNum) {
+            paymentHistoryState = { invoiceId, invoiceNum };
+            displayPaymentHistory();
+            document.getElementById('payment-history-modal').classList.add('active');
+            document.getElementById('payment-date').valueAsDate = new Date();
+        }
+
+        function closePaymentHistoryModal() {
+            document.getElementById('payment-history-modal').classList.remove('active');
+        }
+
+        function displayPaymentHistory() {
+            const payments = LocalDB.getCollection('payments').filter(p => p.invoiceNum === paymentHistoryState.invoiceNum);
+            let html = '<table style="width:100%;"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Action</th></tr></thead><tbody>';
+            
+            if (payments.length === 0) {
+                html += '<tr><td colspan="4" style="text-align:center;padding:20px;">No payments recorded yet</td></tr>';
+            } else {
+                payments.forEach(p => {
+                    html += `<tr>
+                        <td>${formatDate(p.paidOn)}</td>
+                        <td>${formatCurrency(p.amount)}</td>
+                        <td>${p.paymentMethod}</td>
+                        <td><button class="btn btn-danger toolbar-btn" onclick="deletePaymentRecord('${p.id}')"><i class='fas fa-trash'></i></button></td>
+                    </tr>`;
+                });
+            }
+            html += '</tbody></table>';
+            document.getElementById('payment-history-content').innerHTML = html;
+        }
+
+        function recordPayment() {
+            const amount = parseFloat(document.getElementById('payment-amount').value);
+            const paidOn = document.getElementById('payment-date').value;
+            const paymentMethod = document.getElementById('payment-method').value;
+            
+            if (!amount || !paidOn) {
+                notify('Fill all payment fields', 'error');
+                return;
+            }
+            
+            const invoice = LocalDB.getDoc('invoices', paymentHistoryState.invoiceId);
+            if (!invoice) {
+                notify('Invoice not found', 'error');
+                return;
+            }
+            
+            // Create payment record
+            const paymentRecord = {
+                invoiceNum: paymentHistoryState.invoiceNum,
+                invoiceId: paymentHistoryState.invoiceId,
+                customer: invoice.customer,
+                amount: amount,
+                paidOn: paidOn,
+                paymentMethod: paymentMethod
+            };
+            
+            // Add to payments collection
+            addToCollection('payments', paymentRecord);
+            
+            // Update invoice totals
+            const currentPaid = parseFloat(invoice.amountPaid) || 0;
+            const currentUnpaid = parseFloat(invoice.amountUnpaid) || 0;
+            const newAmountPaid = currentPaid + amount;
+            const newAmountUnpaid = Math.max(0, currentUnpaid - amount);
+            
+            updateInCollection('invoices', paymentHistoryState.invoiceId, {
+                amountPaid: newAmountPaid,
+                amountUnpaid: newAmountUnpaid,
+                paid: (newAmountUnpaid <= 0) ? 'Full' : 'Partially'
+            });
+            
+            // Reset form
+            document.getElementById('payment-amount').value = '';
+            document.getElementById('payment-method').value = 'cash';
+            document.getElementById('payment-date').valueAsDate = new Date();
+            
+            displayPaymentHistory();
+            notify('Payment recorded successfully!', 'success');
+            loadCollection('invoices');
+        }
+
+        function deletePaymentRecord(paymentId) {
+            if (confirm('Are you sure you want to delete this payment record?')) {
+                const payment = LocalDB.getDoc('payments', paymentId);
+                if (payment) {
+                    deleteFromCollection('payments', paymentId);
+                    
+                    // Revert invoice amounts
+                    const invoice = LocalDB.getDoc('invoices', payment.invoiceId);
+                    if (invoice) {
+                        const newAmountPaid = Math.max(0, parseFloat(invoice.amountPaid) - parseFloat(payment.amount));
+                        const newAmountUnpaid = parseFloat(invoice.amountUnpaid) + parseFloat(payment.amount);
+                        
+                        updateInCollection('invoices', payment.invoiceId, {
+                            amountPaid: newAmountPaid,
+                            amountUnpaid: newAmountUnpaid,
+                            paid: (newAmountUnpaid >= parseFloat(invoice.amount)) ? 'No' : (newAmountPaid <= 0 ? 'No' : 'Partially')
+                        });
+                    }
+                }
+                displayPaymentHistory();
+                notify('Payment record deleted', 'success');
+                loadCollection('invoices');
+            }
         }
 
         async function loadCollection(collection) {
@@ -1040,10 +1668,11 @@
             const name = document.getElementById('inv-name').value;
             const investor = document.getElementById('inv-investor') ? document.getElementById('inv-investor').value : '';
             const amount = parseFloat(document.getElementById('inv-amount').value);
+            const paidTo = document.getElementById('inv-paid-to') ? document.getElementById('inv-paid-to').value : 'Shop';
             const date = document.getElementById('inv-date').value;
             const method = document.getElementById('inv-method') ? document.getElementById('inv-method').value : 'Cash';
             if (!name || !amount) { notify('Fill all fields', 'error'); return; }
-            addToCollection('investments', { name, investor, amount, date: date || new Date().toISOString().split('T')[0], method });
+            addToCollection('investments', { name, investor, amount, paidTo, date: date || new Date().toISOString().split('T')[0], method });
             document.getElementById('inv-name').value = '';
             document.getElementById('inv-amount').value = '';
             notify('Investment added');
@@ -1053,17 +1682,11 @@
             const nameRaw = document.getElementById('supp-name').value;
             const name = normalizeName(nameRaw);
             const phone = document.getElementById('supp-phone') ? document.getElementById('supp-phone').value : '';
-            const date = document.getElementById('supp-date') ? document.getElementById('supp-date').value : '';
-            const paidOn = document.getElementById('supp-paid-on') ? document.getElementById('supp-paid-on').value : '';
-            const desc = document.getElementById('supp-desc') ? document.getElementById('supp-desc').value : '';
             const details = document.getElementById('supp-details') ? document.getElementById('supp-details').value : '';
             if (!name) { notify('Fill supplier name', 'error'); return; }
-            addToCollection('suppliers', { name, phone, date, paidOn, desc, details });
+            addToCollection('suppliers', { name, phone, details });
             document.getElementById('supp-name').value = '';
             document.getElementById('supp-phone') && (document.getElementById('supp-phone').value = '');
-            document.getElementById('supp-date') && (document.getElementById('supp-date').value = '');
-            document.getElementById('supp-paid-on') && (document.getElementById('supp-paid-on').value = '');
-            document.getElementById('supp-desc') && (document.getElementById('supp-desc').value = '');
             document.getElementById('supp-details') && (document.getElementById('supp-details').value = '');
             notify('Supplier added');
             refreshCompaniesDatalist();
@@ -1077,9 +1700,11 @@
             const gstType = document.getElementById('inv-gst-type') ? document.getElementById('inv-gst-type').value : 'include';
             const gstRatePct = parseFloat(document.getElementById('gst-rate')?.value || '10');
             const paid = document.getElementById('inv-paid') ? document.getElementById('inv-paid').value : 'No';
+            const customAmountPaid = document.getElementById('inv-amount-paid') ? parseFloat(document.getElementById('inv-amount-paid').value) : null;
             const paidOn = document.getElementById('inv-paid-on') ? document.getElementById('inv-paid-on').value : '';
             const paymentMethod = document.getElementById('inv-payment-method') ? document.getElementById('inv-payment-method').value : 'cash';
             const bsb = document.getElementById('inv-bsb') ? document.getElementById('inv-bsb').value : '';
+            const account = document.getElementById('inv-account') ? document.getElementById('inv-account').value : '';
             if (!num || !customer || !amount) { notify('Fill all fields', 'error'); return; }
             // Derive cloud-aligned fields
             let netAmount, gstAmount, totalAmount;
@@ -1093,14 +1718,31 @@
                 gstAmount = amount * rate;
                 totalAmount = netAmount + gstAmount;
             }
-            const status = (paid === 'Yes') ? 'paid' : 'unpaid';
-            const amountPaid = (paid === 'Yes') ? totalAmount : 0;
-            const amountUnpaid = (paid === 'Yes') ? 0 : totalAmount;
-            addToCollection('invoices', { num, customer, amount: totalAmount, date: new Date().toISOString().split('T')[0], paid, paidOn, paymentMethod, bsb, status, gstType, gstRate: isNaN(gstRatePct) ? 10 : gstRatePct, netAmount, gstAmount, amountPaid, amountUnpaid });
+            const status = (paid !== 'No') ? 'paid' : 'unpaid';
+            let amountPaid, amountUnpaid;
+            if (customAmountPaid !== null && !isNaN(customAmountPaid)) {
+                amountPaid = customAmountPaid;
+                amountUnpaid = totalAmount - customAmountPaid;
+            } else if (paid === 'Full') {
+                amountPaid = totalAmount;
+                amountUnpaid = 0;
+            } else if (paid === 'Half') {
+                amountPaid = totalAmount / 2;
+                amountUnpaid = totalAmount / 2;
+            } else if (paid === 'Partially') {
+                amountPaid = totalAmount * 0.3; // 30% as default partial
+                amountUnpaid = totalAmount * 0.7;
+            } else {
+                amountPaid = 0;
+                amountUnpaid = totalAmount;
+            }
+            addToCollection('invoices', { num, customer, amount: totalAmount, date: new Date().toISOString().split('T')[0], paid, paidOn, paymentMethod, bsb, account, status, gstType, gstRate: isNaN(gstRatePct) ? 10 : gstRatePct, netAmount, gstAmount, amountPaid, amountUnpaid });
             document.getElementById('inv-num').value = '';
             document.getElementById('inv-customer').value = '';
             document.getElementById('inv-price').value = '';
+            document.getElementById('inv-amount-paid').value = '';
             document.getElementById('inv-bsb').value = '';
+            document.getElementById('inv-account').value = '';
             notify('Invoice added');
             refreshCompaniesDatalist();
         }
@@ -1139,7 +1781,94 @@
             notify('Outstanding added');
         }
 
-        // Render Table
+        // Setup invoice form auto-lock and auto-fill
+        function setupInvoiceFormListeners() {
+            const bsbInput = document.getElementById('inv-bsb');
+            const accountInput = document.getElementById('inv-account');
+            const customerInput = document.getElementById('inv-customer');
+            
+            if (!bsbInput || !accountInput || !customerInput) return;
+            
+            // Function to check if BSB or Account have values and lock/unlock accordingly
+            function updateLockState() {
+                const hasBsb = bsbInput.value.trim() !== '';
+                const hasAccount = accountInput.value.trim() !== '';
+                const isLocked = hasBsb || hasAccount;
+                
+                customerInput.disabled = isLocked;
+                if (isLocked) {
+                    customerInput.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    customerInput.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+            
+            // Lock BSB and Account inputs when they have values
+            bsbInput.addEventListener('input', () => {
+                bsbInput.disabled = bsbInput.value.trim() !== '';
+                if (bsbInput.disabled) {
+                    bsbInput.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    bsbInput.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+                updateLockState();
+            });
+            
+            accountInput.addEventListener('input', () => {
+                accountInput.disabled = accountInput.value.trim() !== '';
+                if (accountInput.disabled) {
+                    accountInput.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    accountInput.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+                updateLockState();
+            });
+            
+            // Auto-fill company name when typing (autocomplete)
+            customerInput.addEventListener('input', (e) => {
+                if (customerInput.disabled) return; // Don't autocomplete if locked
+                
+                const typed = customerInput.value.trim().toLowerCase();
+                if (typed.length === 0) return;
+                
+                // Get all invoices and find similar company names
+                const invoices = LocalDB.getCollection('invoices');
+                const uniqueCompanies = [...new Set(invoices.map(inv => inv.customer).filter(c => c))];
+                
+                // Find best match (exact or similar)
+                const match = uniqueCompanies.find(company => 
+                    company.toLowerCase().startsWith(typed)
+                );
+                
+                if (match && match.toLowerCase() !== typed) {
+                    // Auto-fill the rest of the text
+                    customerInput.value = match;
+                    // Highlight the suggested part
+                    customerInput.setSelectionRange(typed.length, match.length);
+                    
+                    // Auto-populate BSB and Account from the most recent invoice with this company
+                    const recentInvoice = invoices
+                        .filter(inv => inv.customer === match)
+                        .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+                    
+                    if (recentInvoice) {
+                        if (recentInvoice.bsb) bsbInput.value = recentInvoice.bsb;
+                        if (recentInvoice.account) accountInput.value = recentInvoice.account;
+                        updateLockState();
+                        // Trigger the lock state update for BSB and Account
+                        if (bsbInput.value.trim() !== '') {
+                            bsbInput.disabled = true;
+                            bsbInput.classList.add('opacity-50', 'cursor-not-allowed');
+                        }
+                        if (accountInput.value.trim() !== '') {
+                            accountInput.disabled = true;
+                            accountInput.classList.add('opacity-50', 'cursor-not-allowed');
+                        }
+                    }
+                }
+            });
+        }
+        
         function renderTable(collection, data) {
             const tableId = `${collection}-table`;
             const container = document.getElementById(tableId);
@@ -1153,8 +1882,260 @@
                 }
 
                 const schema = Schema[collection];
-                let html = '<table>';
                 const cols = (schema && schema.columns) ? schema.columns : Object.keys(data[0] || {}).filter(k => k !== 'id' && k !== 'createdAt').map(k => ({ key: k, label: k }));
+                
+                // Special grouping for invoices by company
+                if (collection === 'invoices') {
+                    let html = '';
+                    
+                    // Group invoices by company
+                    const grouped = {};
+                    data.forEach(row => {
+                        const company = row.customer || 'Unknown';
+                        if (!grouped[company]) grouped[company] = [];
+                        grouped[company].push(row);
+                    });
+                    
+                    // Sort companies alphabetically
+                    const sortedCompanies = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
+                    
+                    // Build grouped table
+                    sortedCompanies.forEach((company, idx) => {
+                        const rows = grouped[company];
+                        const totalAmount = rows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+                        const totalBalance = rows.reduce((sum, r) => {
+                            const payments = LocalDB.getCollection('payments').filter(p => String(p.invoiceNum).trim() === String(r.num).trim());
+                            const paid = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+                            return sum + Math.max(0, parseFloat(r.amount) - paid || 0);
+                        }, 0);
+                        
+                        let isOpen = true;
+                        try {
+                            isOpen = sessionStorage.getItem(`expand_${company}`) !== 'false';
+                        } catch (e) {
+                            isOpen = true; // Default expanded
+                        }
+                        html += `<div style="margin-bottom:15px;border:1px solid #3b82f6;border-radius:6px;overflow:hidden">`;
+                        html += `<div style="background:#1e3a8a;padding:12px;cursor:pointer;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px" onclick="toggleCompanyGroup('${company}')">
+                            <div style="display:flex;align-items:center;gap:10px;min-width:200px">
+                                <span style="color:#3b82f6;font-weight:bold">${isOpen ? '▼' : '▶'}</span>
+                                <span style="color:white;font-weight:600;word-break:break-word">${company}</span>
+                                <span style="color:#cbd5e1;font-size:12px;white-space:nowrap">(${rows.length})</span>
+                            </div>
+                            <div style="color:#3b82f6;font-size:11px;text-align:right;flex:1;min-width:180px">
+                                <div style="margin-top:4px">Σ: ${formatCurrency(totalAmount)}</div>
+                                <div>Bal: ${formatCurrency(totalBalance)}</div>
+                            </div>
+                        </div>`;
+                        
+                        if (isOpen) {
+                            html += '<table style="width:100%;border-collapse:collapse">';
+                            html += '<thead><tr style="background:#0f172a">';
+                            cols.forEach(c => { html += `<th style="padding:8px;border-bottom:1px solid #3b82f6;word-break:break-word">${c.label}</th>`; });
+                            html += '<th style="padding:8px;border-bottom:1px solid #3b82f6">Actions</th></tr></thead><tbody>';
+                            
+                            rows.forEach(row => {
+                                const payments = LocalDB.getCollection('payments').filter(p => String(p.invoiceNum).trim() === String(row.num).trim());
+                                const invoiceAmount = parseFloat(row.amount) || 0;
+                                const historyKey = `hist_${row.id}`;
+                                let showHistory = false;
+                                try {
+                                    showHistory = sessionStorage.getItem(historyKey) === 'true';
+                                } catch (e) {
+                                    showHistory = false;
+                                }
+                                
+                                html += '<tr style="border-bottom:1px solid #1e293b">';
+                                cols.forEach(c => {
+                                    let val = (typeof c.value === 'function') ? c.value(row) : row[c.key];
+                                    if (c.type === 'currency') val = formatCurrency(val);
+                                    else if (c.type === 'date') val = formatDate(val);
+                                    html += `<td style="padding:8px">${(val ?? 'N/A')}</td>`;
+                                });
+                                const id = row.id || '';
+                                html += `<td style="padding:8px"><div class="flex gap-2">
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="togglePaymentHistory('${id}')"><i class='fas fa-history'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="openEditModal('${collection}', '${id}')"><i class='fas fa-pen'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="shareRecord('${collection}', '${id}')"><i class='fas fa-share-alt'></i></button>
+                                    <button class="btn btn-danger toolbar-btn no-print" onclick="deleteFromCollection('${collection}', '${id}')"><i class='fas fa-trash'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForRow('${collection}', '${id}')"><i class='fas fa-eye'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="printRow('${collection}', '${id}')"><i class='fas fa-print'></i></button>
+                                </div></td>`;
+                                html += '</tr>';
+                                
+                                // Payment History Row
+                                if (showHistory && payments.length > 0) {
+                                    const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                                    const remaining = Math.max(0, invoiceAmount - totalPaid);
+                                    html += `<tr style="background:#0f172a;border-bottom:1px solid #1e293b">
+                                        <td colspan="${cols.length + 1}" style="padding:12px">
+                                            <div style="color:#cbd5e1;font-size:13px">
+                                                <div style="margin-bottom:8px;font-weight:600;color:#3b82f6">Payment History - Invoice #${row.num} (${row.customer})</div>
+                                                <table style="width:100%;margin-bottom:8px">
+                                                    <thead>
+                                                        <tr style="border-bottom:1px solid #3b82f6">
+                                                            <th style="padding:6px;text-align:left">Date</th>
+                                                            <th style="padding:6px;text-align:left">Amount</th>
+                                                            <th style="padding:6px;text-align:left">Method</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        ${payments.map(p => `
+                                                            <tr style="border-bottom:1px solid #1e293b">
+                                                                <td style="padding:6px">${formatDate(p.paidOn) || 'N/A'}</td>
+                                                                <td style="padding:6px">${p.amount}</td>
+                                                                <td style="padding:6px">${p.paymentMethod || 'N/A'}</td>
+                                                            </tr>
+                                                        `).join('')}
+                                                    </tbody>
+                                                </table>
+                                                <div style="display:flex;gap:20px;padding-top:8px;border-top:1px solid #3b82f6">
+                                                    <div>Invoice Amount: <span style="color:#3b82f6;font-weight:600">${formatCurrency(invoiceAmount)}</span></div>
+                                                    <div>Total Paid: <span style="color:#10b981;font-weight:600">${formatCurrency(totalPaid)}</span></div>
+                                                    <div>Remaining: <span style="color:#${remaining > 0 ? 'ef4444' : '10b981'};font-weight:600">${formatCurrency(remaining)}</span></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>`;
+                                }
+                            });
+                            html += '</tbody></table>';
+                        }
+                        html += '</div>';
+                    });
+                    
+                    container.innerHTML = html;
+                    updateTotals(collection, data);
+                    return;
+                }
+                
+                // Special grouping for outstanding by customer
+                if (collection === 'outstanding') {
+                    let html = '';
+                    
+                    // Group outstanding by customer
+                    const grouped = {};
+                    data.forEach(row => {
+                        const customer = row.customer || 'Unknown';
+                        if (!grouped[customer]) grouped[customer] = [];
+                        grouped[customer].push(row);
+                    });
+                    
+                    // Sort customers alphabetically
+                    const sortedCustomers = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
+                    
+                    // Build grouped table
+                    sortedCustomers.forEach((customer, idx) => {
+                        const rows = grouped[customer];
+                        const totalAmount = rows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+                        const totalBalance = rows.reduce((sum, r) => {
+                            const payments = LocalDB.getCollection('outstanding_payments').filter(p => String(p.outstandingId).trim() === String(r.id).trim());
+                            const paid = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+                            return sum + Math.max(0, parseFloat(r.amount) - paid || 0);
+                        }, 0);
+                        
+                        let isOpen = true;
+                        try {
+                            isOpen = sessionStorage.getItem(`expand_out_${customer}`) !== 'false';
+                        } catch (e) {
+                            isOpen = true; // Default expanded
+                        }
+                        html += `<div style="margin-bottom:15px;border:1px solid #3b82f6;border-radius:6px;overflow:hidden">`;
+                        html += `<div style="background:#1e3a8a;padding:12px;cursor:pointer;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px" onclick="toggleOutstandingGroup('${customer}')">
+                            <div style="display:flex;align-items:center;gap:10px;min-width:200px">
+                                <span style="color:#3b82f6;font-weight:bold">${isOpen ? '▼' : '▶'}</span>
+                                <span style="color:white;font-weight:600;word-break:break-word">${customer}</span>
+                                <span style="color:#cbd5e1;font-size:12px;white-space:nowrap">(${rows.length})</span>
+                            </div>
+                            <div style="color:#3b82f6;font-size:11px;text-align:right;flex:1;min-width:180px">
+                                <div style="margin-top:4px">Σ: ${formatCurrency(totalAmount)}</div>
+                                <div>Bal: ${formatCurrency(totalBalance)}</div>
+                            </div>
+                        </div>`;
+                        
+                        if (isOpen) {
+                            html += '<table style="width:100%;border-collapse:collapse">';
+                            html += '<thead><tr style="background:#0f172a">';
+                            cols.forEach(c => { html += `<th style="padding:8px;border-bottom:1px solid #3b82f6;word-break:break-word">${c.label}</th>`; });
+                            html += '<th style="padding:8px;border-bottom:1px solid #3b82f6">Actions</th></tr></thead><tbody>';
+                            
+                            rows.forEach(row => {
+                                const payments = LocalDB.getCollection('outstanding_payments').filter(p => String(p.outstandingId).trim() === String(row.id).trim());
+                                const outstandingAmount = parseFloat(row.amount) || 0;
+                                const historyKey = `out_hist_${row.id}`;
+                                let showHistory = false;
+                                try {
+                                    showHistory = localStorage.getItem(historyKey) === 'true';
+                                } catch (e) {
+                                    showHistory = false;
+                                }
+                                
+                                html += '<tr style="border-bottom:1px solid #1e293b">';
+                                cols.forEach(c => {
+                                    let val = (typeof c.value === 'function') ? c.value(row) : row[c.key];
+                                    if (c.type === 'currency') val = formatCurrency(val);
+                                    else if (c.type === 'date') val = formatDate(val);
+                                    html += `<td style="padding:8px">${(val ?? 'N/A')}</td>`;
+                                });
+                                const id = row.id || '';
+                                html += `<td style="padding:8px"><div class="flex gap-2">
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="toggleOutstandingHistory('${id}')"><i class='fas fa-history'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="openOutstandingEditModal('${id}')"><i class='fas fa-pen'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="shareRecord('${collection}', '${id}')"><i class='fas fa-share-alt'></i></button>
+                                    <button class="btn btn-danger toolbar-btn no-print" onclick="deleteFromCollection('${collection}', '${id}')"><i class='fas fa-trash'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForRow('${collection}', '${id}')"><i class='fas fa-eye'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="printRow('${collection}', '${id}')"><i class='fas fa-print'></i></button>
+                                </div></td>`;
+                                html += '</tr>';
+                                
+                                // Payment History Row
+                                if (showHistory) {
+                                    const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                                    const remaining = Math.max(0, outstandingAmount - totalPaid);
+                                    html += `<tr style="background:#0f172a;border-bottom:1px solid #1e293b">
+                                        <td colspan="${cols.length + 1}" style="padding:12px">
+                                            <div style="color:#cbd5e1;font-size:13px;max-height:400px;overflow-y:auto">
+                                                <div style="margin-bottom:8px;font-weight:600;color:#3b82f6">Payment History - ${row.customer}</div>
+                                                <table style="width:100%;margin-bottom:8px">
+                                                    <thead>
+                                                        <tr style="border-bottom:1px solid #3b82f6">
+                                                            <th style="padding:6px;text-align:left">Paid On</th>
+                                                            <th style="padding:6px;text-align:left">Amount</th>
+                                                            <th style="padding:6px;text-align:left">Method</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        ${payments.map(p => `
+                                                            <tr style="border-bottom:1px solid #1e293b">
+                                                                <td style="padding:6px">${formatDate(p.paidOn) || 'N/A'}</td>
+                                                                <td style="padding:6px">${p.amount}</td>
+                                                                <td style="padding:6px">${p.paymentMethod || 'N/A'}</td>
+                                                            </tr>
+                                                        `).join('')}
+                                                    </tbody>
+                                                </table>
+                                                <div style="display:flex;gap:20px;padding-top:8px;border-top:1px solid #3b82f6;flex-wrap:wrap">
+                                                    <div>Outstanding Amount: <span style="color:#3b82f6;font-weight:600">${formatCurrency(outstandingAmount)}</span></div>
+                                                    <div>Total Paid: <span style="color:#10b981;font-weight:600">${formatCurrency(totalPaid)}</span></div>
+                                                    <div>Remaining: <span style="color:#${remaining > 0 ? 'ef4444' : '10b981'};font-weight:600">${formatCurrency(remaining)}</span></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>`;
+                                }
+                            });
+                            html += '</tbody></table>';
+                        }
+                        html += '</div>';
+                    });
+                    
+                    container.innerHTML = html;
+                    updateTotals(collection, data);
+                    return;
+                }
+                
+                // Default table rendering for other collections
+                let html = '<table>';
                 html += '<thead><tr>';
                 cols.forEach(c => { html += `<th>${c.label}</th>`; });
                 html += '<th>Actions</th></tr></thead><tbody>';
@@ -1170,6 +2151,7 @@
                     const id = row.id || '';
                     html += `<td class="flex gap-2">
                         <button class="btn btn-primary toolbar-btn no-print" onclick="openEditModal('${collection}', '${id}')"><i class='fas fa-pen'></i></button>
+                        <button class="btn btn-primary toolbar-btn no-print" onclick="shareRecord('${collection}', '${id}')"><i class='fas fa-share-alt'></i></button>
                         <button class="btn btn-danger toolbar-btn no-print" onclick="deleteFromCollection('${collection}', '${id}')"><i class='fas fa-trash'></i></button>
                         <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForRow('${collection}', '${id}')"><i class='fas fa-eye'></i></button>
                         <button class="btn btn-primary toolbar-btn no-print" onclick="printRow('${collection}', '${id}')"><i class='fas fa-print'></i></button>
@@ -1179,13 +2161,9 @@
                 html += '</tbody></table>';
                 container.innerHTML = html;
                 updateTotals(collection, data);
-                // Keep invoices table stable; run split refresh separately
             } catch (e) {
-                console.warn('Table render error:', e);
+                console.error('renderTable error:', e);
                 container.innerHTML = '<p class="text-red-400">Error rendering table</p>';
-            }
-            if (collection === 'invoices') {
-                try { refreshInvestmentsSplit(); } catch (e) { console.warn('Split render error:', e); }
             }
         }
 
@@ -1198,7 +2176,15 @@
                 return;
             }
             const schema = Schema[collection];
-            const cols = (schema && schema.columns) ? schema.columns : Object.keys(data[0] || {}).filter(k => k !== 'id' && k !== 'createdAt').map(k => ({ key: k, label: k }));
+            let cols = (schema && schema.columns) ? schema.columns : Object.keys(data[0] || {}).filter(k => k !== 'id' && k !== 'createdAt').map(k => ({ key: k, label: k }));
+            
+            // Filter columns based on investor data for investments
+            if (collection === 'investments' && containerId === 'investments-hayat-table') {
+                cols = cols.filter(c => c.label !== 'Abbas');
+            } else if (collection === 'investments' && containerId === 'investments-abbas-table') {
+                cols = cols.filter(c => c.label !== 'Haji Hayat');
+            }
+            
             html += '<table><thead><tr>' + cols.map(c => `<th>${c.label}</th>`).join('') + '<th>Actions</th></tr></thead><tbody>';
             data.forEach(row => {
                 html += '<tr>';
@@ -1211,6 +2197,7 @@
                 const id = row.id || '';
                 html += `<td class="flex gap-2">
                     <button class="btn btn-primary toolbar-btn no-print" onclick="openEditModal('${collection}', '${id}')"><i class='fas fa-pen'></i></button>
+                    <button class="btn btn-primary toolbar-btn no-print" onclick="shareRecord('${collection}', '${id}')"><i class='fas fa-share-alt'></i></button>
                     <button class="btn btn-danger toolbar-btn no-print" onclick="deleteFromCollection('${collection}', '${id}')"><i class='fas fa-trash'></i></button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForRow('${collection}', '${id}')"><i class='fas fa-eye'></i></button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="printRow('${collection}', '${id}')"><i class='fas fa-print'></i></button>
@@ -1227,6 +2214,166 @@
             const abbas = rows.filter(r => r.investor === 'Abbas');
             renderTableToContainer('investments', hayat, 'investments-hayat-table');
             renderTableToContainer('investments', abbas, 'investments-abbas-table');
+            updateInvestorTotal('hayat', hayat);
+            updateInvestorTotal('abbas', abbas);
+        }
+
+        function switchInvTab(tab) {
+            // Hide all
+            document.getElementById('inv-all').style.display = 'none';
+            document.getElementById('inv-hayat').style.display = 'none';
+            document.getElementById('inv-abbas').style.display = 'none';
+            // Reset buttons
+            document.getElementById('tab-btn-all').classList.remove('active');
+            document.getElementById('tab-btn-hayat').classList.remove('active');
+            document.getElementById('tab-btn-abbas').classList.remove('active');
+            // Save investment subtab selection
+            try { localStorage.setItem('currentInvTab', tab); }
+            catch(e) { console.warn('Investment tab save error:', e); }
+            // Show selected
+            if (tab === 'all') {
+                document.getElementById('inv-all').style.display = 'block';
+                document.getElementById('tab-btn-all').classList.add('active');
+                loadCollection('investments');
+            } else if (tab === 'hayat') {
+                document.getElementById('inv-hayat').style.display = 'block';
+                document.getElementById('tab-btn-hayat').classList.add('active');
+                loadInvestorFromFirebase('Haji Hayat');
+            } else if (tab === 'abbas') {
+                document.getElementById('inv-abbas').style.display = 'block';
+                document.getElementById('tab-btn-abbas').classList.add('active');
+                loadInvestorFromFirebase('Abbas');
+            }
+        }
+
+        async function loadInvestorFromFirebase(investor) {
+            showLoading('investments', true);
+            try {
+                // Fetch from Firebase
+                const snapshot = await db.collection('investments').where('investor', '==', investor).get();
+                const firebaseData = [];
+                snapshot.forEach(doc => {
+                    const raw = { id: doc.id, ...doc.data() };
+                    const mapped = mapRead('investments', raw);
+                    firebaseData.push(mapped);
+                });
+                
+                // Merge with local data
+                const localRows = LocalDB.getCollection('investments').filter(r => r.investor === investor);
+                const combined = [...firebaseData];
+                localRows.forEach(local => {
+                    if (!combined.find(f => f.id === local.id)) {
+                        combined.push(local);
+                    }
+                });
+                
+                // Ensure all required fields exist
+                const requiredFields = ['name', 'investor', 'amount', 'paidTo', 'date', 'method'];
+                const processed = combined.map(r => {
+                    requiredFields.forEach(field => {
+                        if (!(field in r)) {
+                            r[field] = field === 'amount' ? 0 : field === 'paidTo' ? 'Shop' : field === 'method' ? 'Cash' : '';
+                        }
+                    });
+                    return r;
+                });
+                
+                if (investor === 'Haji Hayat') {
+                    renderTableToContainer('investments', processed, 'investments-hayat-table');
+                    updateInvestorTotal('hayat', processed);
+                } else {
+                    renderTableToContainer('investments', processed, 'investments-abbas-table');
+                    updateInvestorTotal('abbas', processed);
+                }
+                notify(`Loaded ${processed.length} ${investor} records from Firebase`, 'success');
+            } catch (e) {
+                console.warn('Firebase load error:', e);
+                // Fallback to local data
+                const localRows = LocalDB.getCollection('investments').filter(r => r.investor === investor);
+                if (investor === 'Haji Hayat') {
+                    renderTableToContainer('investments', localRows, 'investments-hayat-table');
+                    updateInvestorTotal('hayat', localRows);
+                } else {
+                    renderTableToContainer('investments', localRows, 'investments-abbas-table');
+                    updateInvestorTotal('abbas', localRows);
+                }
+                notify('Loaded from local storage', 'success');
+            }
+            showLoading('investments', false);
+        }
+
+        function updateInvestorTotal(investor, data) {
+            const total = data.reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
+            const name = investor === 'hayat' ? 'Haji Hayat' : 'Abbas';
+            const el = document.getElementById(`inv-${investor}-totals`);
+            if (el) el.textContent = `${name} Total: ${formatCurrency(total)}`;
+        }
+
+        function printInvestorTab(investor) {
+            const rows = LocalDB.getCollection('investments');
+            const name = investor === 'hayat' ? 'Haji Hayat' : 'Abbas';
+            const filtered = rows.filter(r => r.investor === name);
+            const schema = Schema.investments;
+            const cols = schema.columns;
+            let html = buildPrintHeader(`${name} - Investments`);
+            html += '<table style="width:100%;border-collapse:collapse"><thead><tr>';
+            cols.forEach(c => html += `<th style="border-bottom:1px solid #ccc;padding:8px;text-align:left">${c.label}</th>`);
+            html += '</tr></thead><tbody>';
+            filtered.forEach(r => {
+                html += '<tr>';
+                cols.forEach(c => {
+                    let val = (typeof c.value === 'function') ? c.value(r) : r[c.key];
+                    if (c.type === 'currency') val = formatCurrency(val);
+                    else if (c.type === 'date') val = formatDate(val);
+                    html += `<td style="padding:8px;border-bottom:1px solid #eee">${val ?? ''}</td>`;
+                });
+                html += '</tr>';
+            });
+            const total = filtered.reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
+            html += `<tr><td colspan="${cols.length - 1}" style="text-align:right;font-weight:bold;padding:8px">Total:</td><td style="font-weight:bold;padding:8px">${formatCurrency(total)}</td></tr>`;
+            html += '</tbody></table>';
+            const win = window.open('', '_blank');
+            if (!win) return notify('Popup blocked', 'error');
+            win.document.write(`<html><head><title>${name}</title><style>body{padding:20px;font-family:Arial}</style></head><body><div style="margin-bottom:10px"><button onclick="window.print()">Print</button> <button onclick="window.close()">Close</button></div>${html}</body></html>`);
+            win.document.close();
+        }
+
+        function exportInvestmentsPDF(type) {
+            const rows = LocalDB.getCollection('investments');
+            let filtered, title;
+            if (type === 'hayat') {
+                filtered = rows.filter(r => r.investor === 'Haji Hayat');
+                title = 'Haji Hayat Investments';
+            } else if (type === 'abbas') {
+                filtered = rows.filter(r => r.investor === 'Abbas');
+                title = 'Abbas Investments';
+            } else {
+                filtered = rows;
+                title = 'All Investments';
+            }
+            const schema = Schema.investments;
+            const cols = schema.columns;
+            let html = buildPrintHeader(title);
+            html += '<table style="width:100%;border-collapse:collapse"><thead><tr>';
+            cols.forEach(c => html += `<th style="border-bottom:1px solid #ccc;padding:8px;text-align:left">${c.label}</th>`);
+            html += '</tr></thead><tbody>';
+            filtered.forEach(r => {
+                html += '<tr>';
+                cols.forEach(c => {
+                    let val = (typeof c.value === 'function') ? c.value(r) : r[c.key];
+                    if (c.type === 'currency') val = formatCurrency(val);
+                    else if (c.type === 'date') val = formatDate(val);
+                    html += `<td style="padding:8px;border-bottom:1px solid #eee">${val ?? ''}</td>`;
+                });
+                html += '</tr>';
+            });
+            const total = filtered.reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
+            html += `<tr><td colspan="${cols.length - 1}" style="text-align:right;font-weight:bold;padding:8px">Total:</td><td style="font-weight:bold;padding:8px">${formatCurrency(total)}</td></tr>`;
+            html += '</tbody></table>';
+            const win = window.open('', '_blank');
+            if (!win) return notify('Popup blocked', 'error');
+            win.document.write(`<html><head><title>${title}</title><style>body{padding:20px;font-family:Arial}@media print{.btn{display:none}}</style></head><body><div style="margin-bottom:10px"><button class="btn" onclick="window.print()">Save as PDF</button> <button class="btn" onclick="window.close()">Close</button></div>${html}</body></html>`);
+            win.document.close();
         }
 
         // Edit Modal Logic
@@ -1238,10 +2385,149 @@
             editState = { collection, id, fields: Object.keys(data).filter(k => k !== 'id' && k !== 'createdAt') };
             const form = document.getElementById('edit-form');
             form.innerHTML = '';
-            editState.fields.forEach(k => {
-                const val = data[k] ?? '';
-                form.innerHTML += `<div class="form-group"><label class="form-label">${k}</label><input class="input" name="${k}" value="${val}"></div>`;
-            });
+            
+            // Get schema columns for this collection
+            const schema = Schema[collection];
+            const columns = schema && schema.columns ? schema.columns : [];
+            
+            // Special handling for investments fields
+            if (collection === 'investments') {
+                const investorName = data.investor === 'Haji Hayat' ? 'Haji Hayat' : 'Abbas';
+                
+                // Description
+                form.innerHTML += `<div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input class="input" name="name" value="${data.name || ''}">
+                </div>`;
+                
+                // Investor Amount (labeled as investor name)
+                form.innerHTML += `<div class="form-group">
+                    <label class="form-label">${investorName} Amount</label>
+                    <input class="input" type="number" name="amount" value="${parseFloat(data.amount) || 0}">
+                </div>`;
+                
+                // Paid to
+                form.innerHTML += `<div class="form-group">
+                    <label class="form-label">Paid to</label>
+                    <select class="input" name="paidTo">
+                        <option value="Shop" ${data.paidTo === 'Shop' ? 'selected' : ''}>Shop</option>
+                        <option value="Real Estate" ${data.paidTo === 'Real Estate' ? 'selected' : ''}>Real Estate</option>
+                        <option value="Cash" ${data.paidTo === 'Cash' ? 'selected' : ''}>Cash</option>
+                    </select>
+                </div>`;
+                
+                // Date
+                form.innerHTML += `<div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input class="input" type="date" name="date" value="${data.date || ''}">
+                </div>`;
+                
+                // Method
+                form.innerHTML += `<div class="form-group">
+                    <label class="form-label">Method</label>
+                    <select class="input" name="method">
+                        <option value="Cash" ${data.method === 'Cash' ? 'selected' : ''}>Cash</option>
+                        <option value="Bank Transfer" ${data.method === 'Bank Transfer' ? 'selected' : ''}>Bank Transfer</option>
+                    </select>
+                </div>`;
+                
+                // Hidden investor field (don't edit investor directly)
+                form.innerHTML += `<input type="hidden" name="investor" value="${data.investor}">`;
+                
+            } else if (collection === 'invoices') {
+                // Special handling for invoices
+                form.innerHTML += `<div class="form-group">
+                    <label class="form-label">Invoice #</label>
+                    <input class="input" name="num" value="${data.num || ''}">
+                </div>`;
+                
+                form.innerHTML += `<div class="form-group">
+                    <label class="form-label">Company</label>
+                    <input class="input" name="customer" value="${data.customer || ''}">
+                </div>`;
+                
+                form.innerHTML += `<div class="form-group">
+                    <label class="form-label">Total Amount</label>
+                    <input class="input" type="number" name="amount" value="${parseFloat(data.amount) || 0}">
+                </div>`;
+                
+                form.innerHTML += `<div class="form-group">
+                    <label class="form-label">Paid Status</label>
+                    <select class="input" name="paid">
+                        <option value="No" ${data.paid === 'No' ? 'selected' : ''}>Not Paid</option>
+                        <option value="Full" ${data.paid === 'Full' ? 'selected' : ''}>Paid Full</option>
+                        <option value="Half" ${data.paid === 'Half' ? 'selected' : ''}>Paid Half</option>
+                        <option value="Partially" ${data.paid === 'Partially' ? 'selected' : ''}>Paid Partially</option>
+                    </select>
+                </div>`;
+                
+                form.innerHTML += `<div class="form-group">
+                    <label class="form-label">Amount Paid</label>
+                    <input class="input" type="number" name="amountPaid" value="${parseFloat(data.amountPaid) || 0}">
+                </div>`;
+                
+                form.innerHTML += `<div class="form-group">
+                    <label class="form-label">Amount Unpaid</label>
+                    <input class="input" type="number" name="amountUnpaid" value="${parseFloat(data.amountUnpaid) || 0}">
+                </div>`;
+                
+                form.innerHTML += `<div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input class="input" type="date" name="date" value="${data.date || ''}">
+                </div>`;
+                
+                form.innerHTML += `<div class="form-group">
+                    <label class="form-label">Paid On</label>
+                    <input class="input" type="date" name="paidOn" value="${data.paidOn || ''}">
+                </div>`;
+                
+                form.innerHTML += `<div class="form-group">
+                    <label class="form-label">Payment Method</label>
+                    <select class="input" name="paymentMethod">
+                        <option value="cash" ${data.paymentMethod === 'cash' ? 'selected' : ''}>Cash</option>
+                        <option value="bank" ${data.paymentMethod === 'bank' ? 'selected' : ''}>Bank</option>
+                        <option value="card" ${data.paymentMethod === 'card' ? 'selected' : ''}>Card</option>
+                    </select>
+                </div>`;
+                
+            } else if (columns.length > 0) {
+                // Use schema columns for other collections
+                columns.forEach(col => {
+                    if (!col.key) return; // Skip computed columns
+                    const fieldName = col.key;
+                    const fieldLabel = col.label;
+                    const fieldValue = data[fieldName] ?? '';
+                    
+                    // Determine input type based on schema type
+                    let inputType = 'text';
+                    if (col.type === 'currency') inputType = 'number';
+                    else if (col.type === 'date') inputType = 'date';
+                    
+                    // Handle special cases
+                    if (fieldName === 'paid' || fieldName === 'status' || fieldName === 'type' || fieldName === 'cashType' || fieldName === 'service') {
+                        // These should be dropdowns - we'll detect based on existing values
+                        form.innerHTML += `<div class="form-group"><label class="form-label">${fieldLabel}</label><input class="input" name="${fieldName}" value="${fieldValue}"></div>`;
+                    } else {
+                        form.innerHTML += `<div class="form-group"><label class="form-label">${fieldLabel}</label><input class="input" type="${inputType}" name="${fieldName}" value="${fieldValue}"></div>`;
+                    }
+                });
+            } else {
+                // Fallback: generic handling if no schema defined
+                editState.fields.forEach(k => {
+                    const val = data[k] ?? '';
+                    form.innerHTML += `<div class="form-group"><label class="form-label">${k}</label><input class="input" name="${k}" value="${val}"></div>`;
+                });
+            }
+            
+            // Show payment history button for invoices
+            const paymentHistoryBtn = document.getElementById('payment-history-btn');
+            if (collection === 'invoices') {
+                paymentHistoryBtn.style.display = 'block';
+                paymentHistoryBtn.onclick = () => openPaymentHistoryModal(id, data.num);
+            } else {
+                paymentHistoryBtn.style.display = 'none';
+            }
+            
             document.getElementById('edit-modal').classList.add('active');
         }
 
@@ -1253,58 +2539,60 @@
             e.preventDefault();
             const form = document.getElementById('edit-form');
             const updated = {};
-            editState.fields.forEach(k => {
-                const input = form.querySelector(`[name="${k}"]`);
-                updated[k] = input ? (isFinite(input.value) ? parseFloat(input.value) : input.value) : undefined;
-            });
+            
+            if (editState.collection === 'investments') {
+                // For investments, map form fields to data fields
+                const name = form.querySelector('[name="name"]');
+                const amount = form.querySelector('[name="amount"]');
+                const paidTo = form.querySelector('[name="paidTo"]');
+                const date = form.querySelector('[name="date"]');
+                const method = form.querySelector('[name="method"]');
+                
+                if (name) updated.name = name.value;
+                if (amount) updated.amount = parseFloat(amount.value) || 0;
+                if (paidTo) updated.paidTo = paidTo.value;
+                if (date) updated.date = date.value;
+                if (method) updated.method = method.value;
+            } else if (editState.collection === 'invoices') {
+                // For invoices, map form fields to data fields
+                const num = form.querySelector('[name="num"]');
+                const customer = form.querySelector('[name="customer"]');
+                const amount = form.querySelector('[name="amount"]');
+                const paid = form.querySelector('[name="paid"]');
+                const amountPaid = form.querySelector('[name="amountPaid"]');
+                const amountUnpaid = form.querySelector('[name="amountUnpaid"]');
+                const date = form.querySelector('[name="date"]');
+                const paidOn = form.querySelector('[name="paidOn"]');
+                const paymentMethod = form.querySelector('[name="paymentMethod"]');
+                
+                if (num) updated.num = num.value;
+                if (customer) updated.customer = customer.value;
+                if (amount) updated.amount = parseFloat(amount.value) || 0;
+                if (paid) updated.paid = paid.value;
+                if (amountPaid) updated.amountPaid = parseFloat(amountPaid.value) || 0;
+                if (amountUnpaid) updated.amountUnpaid = parseFloat(amountUnpaid.value) || 0;
+                if (date) updated.date = date.value;
+                if (paidOn) updated.paidOn = paidOn.value;
+                if (paymentMethod) updated.paymentMethod = paymentMethod.value;
+                updated.status = (paid && paid.value !== 'No') ? 'paid' : 'unpaid';
+            } else {
+                // Generic handling for other collections
+                editState.fields.forEach(k => {
+                    const input = form.querySelector(`[name="${k}"]`);
+                    updated[k] = input ? (isFinite(input.value) ? parseFloat(input.value) : input.value) : undefined;
+                });
+            }
+            
             updateInCollection(editState.collection, editState.id, updated);
             closeEditModal();
             notify('Record updated');
         }
 
-        // Reports
-        function generateReports() {
-            const from = document.getElementById('rep-from').value;
-            const to = document.getElementById('rep-to').value;
-            const start = from ? new Date(from) : null;
-            const end = to ? new Date(to) : null;
-            const cols = ['expenses','investments','invoices','exchange','cash','outstanding'];
-            const totals = {};
-            const fieldMap = { expenses:'amount', investments:'amount', invoices:'amount', exchange:'amount', cash:'amount', outstanding:'amount' };
-            cols.forEach(c => {
-                const field = fieldMap[c];
-                const rows = LocalDB.getCollection(c).filter(r => {
-                    const d = new Date(r.date || r.createdAt || Date.now());
-                    return (!start || d >= start) && (!end || d <= end);
-                });
-                totals[c] = rows.reduce((s, r) => s + (parseFloat(r[field]) || 0), 0);
-            });
-            // Per-investor totals
-            const invRows = LocalDB.getCollection('investments').filter(r => {
-                const d = new Date(r.date || r.createdAt || Date.now());
-                return (!start || d >= start) && (!end || d <= end);
-            });
-            const investHayat = invRows.filter(r => (r.investor === 'Haji Hayat'));
-            const investAbbas = invRows.filter(r => (r.investor === 'Abbas'));
-            const totalHayat = investHayat.reduce((s, r) => s + (parseFloat(r.amount)||0), 0);
-            const totalAbbas = investAbbas.reduce((s, r) => s + (parseFloat(r.amount)||0), 0);
-            const el = document.getElementById('reports-table');
-            el.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="glass p-4"><h4 class="font-bold mb-2">Expenses</h4><div>${formatCurrency(totals.expenses)}</div></div>
-                <div class="glass p-4"><h4 class="font-bold mb-2">Investments</h4><div>${formatCurrency(totals.investments)}</div></div>
-                <div class="glass p-4"><h4 class="font-bold mb-2">Invoices</h4><div>${formatCurrency(totals.invoices)}</div></div>
-                <div class="glass p-4"><h4 class="font-bold mb-2">Exchange</h4><div>${formatCurrency(totals.exchange)}</div></div>
-                <div class="glass p-4"><h4 class="font-bold mb-2">Cash</h4><div>${formatCurrency(totals.cash)}</div></div>
-                <div class="glass p-4"><h4 class="font-bold mb-2">Outstanding</h4><div>${formatCurrency(totals.outstanding)}</div></div>
-                <div class="glass p-4"><h4 class="font-bold mb-2">Haji Hayat Investments</h4><div>${formatCurrency(totalHayat)}</div></div>
-                <div class="glass p-4"><h4 class="font-bold mb-2">Abbas Investments</h4><div>${formatCurrency(totalAbbas)}</div></div>
-            </div>`;
-        }
-
         // Data Sync & Seeding
         async function syncAllFromFirebase() {
-            const cols = ['expenses','investments','suppliers','invoices','exchange','cash','outstanding'];
+            const cols = ['expenses','investments','suppliers','invoices','exchange','cash','outstanding','outstanding_payments','payments'];
             let totalCloud = 0;
+            let hasPermissionError = false;
             for (const c of cols) {
                 try {
                     const snapshot = await db.collection(resolveColl(c)).get();
@@ -1320,15 +2608,24 @@
                         totalCloud += data.length;
                     }
                 } catch (e) {
-                    console.warn('Sync read error:', e);
+                    if (e.code === 'permission-denied') {
+                        hasPermissionError = true;
+                        console.warn('Firebase sync blocked - check Firestore security rules');
+                    } else {
+                        console.warn('Sync read error:', e);
+                    }
                 }
             }
-            notify(`Synced ${totalCloud} cloud records`);
+            if (hasPermissionError) {
+                notify(`Synced ${totalCloud} local records (Firebase sync disabled - check security rules)`, 'warn');
+            } else {
+                notify(`Synced ${totalCloud} cloud records`);
+            }
         }
 
         async function seedDemoData() {
             // Avoid duplicate seeding if local data exists
-            const cols = ['expenses','investments','suppliers','invoices','exchange','cash','outstanding'];
+            const cols = ['expenses','investments','suppliers','invoices','exchange','cash','outstanding','outstanding_payments','payments'];
             const existing = cols.reduce((s, c) => s + (LocalDB.getCollection(c).length || 0), 0);
             if (existing > 0) {
                 notify('Data already exists; seed skipped', 'warn');
@@ -1393,8 +2690,12 @@
 
         async function checkCloudStatus() {
             const el = document.getElementById('cloud-status');
+            if (!el) {
+                console.warn('cloud-status element not found, skipping cloud status check');
+                return;
+            }
             el.textContent = 'Checking cloud collections...';
-            const cols = ['expenses','investments','suppliers','invoices','exchange','cash','outstanding'];
+            const cols = ['expenses','investments','suppliers','invoices','exchange','cash','outstanding','outstanding_payments','payments'];
             const cache = getCloudNameCache();
             const rows = [];
             for (const c of cols) {
@@ -1460,7 +2761,7 @@
                 const obj = JSON.parse(txt || '{}');
                 setFieldMap(obj);
                 notify('Saved field mapping');
-                ['expenses','investments','suppliers','invoices','exchange','cash','outstanding'].forEach(col => loadCollection(col));
+                ['expenses','investments','suppliers','invoices','exchange','cash','outstanding','outstanding_payments','payments'].forEach(col => loadCollection(col));
             } catch (e) {
                 notify('Invalid JSON mapping', 'error');
             }
@@ -1490,17 +2791,26 @@
             // Force-remove any old PWA caches/service workers from previous app versions
             (async () => {
                 try {
-                    if ('serviceWorker' in navigator) {
-                        const regs = await navigator.serviceWorker.getRegistrations();
-                        regs.forEach(r => r.unregister());
+                    // Only attempt service worker cleanup if we're in a proper protocol (not null/file)
+                    if ('serviceWorker' in navigator && window.location.protocol !== 'null:') {
+                        try {
+                            const regs = await navigator.serviceWorker.getRegistrations();
+                            regs.forEach(r => r.unregister());
+                        } catch (swErr) {
+                            console.warn('Service worker cleanup skipped:', swErr.message);
+                        }
                     }
                     if (window.caches && caches.keys) {
-                        const keys = await caches.keys();
-                        await Promise.all(keys.map(k => caches.delete(k)));
+                        try {
+                            const keys = await caches.keys();
+                            await Promise.all(keys.map(k => caches.delete(k)));
+                        } catch (cacheErr) {
+                            console.warn('Cache cleanup skipped:', cacheErr.message);
+                        }
                     }
                     console.log('✓ Cleared old service workers and caches');
                 } catch (e) {
-                    console.warn('Cleanup error:', e);
+                    console.warn('Cleanup error:', e.message);
                 }
             })();
 
@@ -1521,12 +2831,14 @@
                     const fmDefault = {
                         expenses: { desc: 'desc', amount: 'amount', date: 'date' },
                         // Cloud 'name' corresponds to local 'investor'
-                        investments: { investor: 'name', amount: 'amount', date: 'date' },
-                        suppliers: { name: 'name', phone: 'phone', date: 'date', paidOn: 'paidOn', desc: 'desc', details: 'details' },
+                        investments: { investor: 'name', amount: 'amount', date: 'date', paidTo: 'paidTo', method: 'method' },
+                        suppliers: { name: 'name', phone: 'phone', details: 'details' },
                         invoices: { num: 'invoiceNumber', customer: 'customer', amount: 'totalAmount', date: 'date', paidOn: 'paidOn', paymentMethod: 'paymentMethod', bsb: 'bsb', gstRate: 'gstRate', gstAmount: 'gstAmount', netAmount: 'netAmount', amountPaid: 'amountPaid', amountUnpaid: 'amountUnpaid', gstType: 'gstType' },
                         exchange: { amount: 'amount', service: 'service', cashType: 'cashType', status: 'status', paidOn: 'paidOn' },
                         cash: { desc: 'desc', type: 'type', amount: 'amount', date: 'date' },
-                        outstanding: { customer: 'customer', amount: 'amount', date: 'date' }
+                        outstanding: { customer: 'customer', amount: 'amount', date: 'date' },
+                        outstanding_payments: { outstandingId: 'outstandingId', customer: 'customer', amount: 'amount', paidOn: 'paidOn', paymentMethod: 'paymentMethod' },
+                        payments: { invoiceNum: 'invoiceNum', invoiceId: 'invoiceId', customer: 'customer', amount: 'amount', paidOn: 'paidOn', paymentMethod: 'paymentMethod' }
                     };
                     setFieldMap(fmDefault);
                     const schemaEl = document.getElementById('schema-map-json');
@@ -1537,10 +2849,39 @@
             }
 
             // Load all collections then perform a cloud sync to ensure latest data is shown
-            const collections = ['expenses', 'investments', 'suppliers', 'invoices', 'exchange', 'cash', 'outstanding'];
+            const collections = ['expenses', 'investments', 'suppliers', 'invoices', 'exchange', 'cash', 'outstanding', 'outstanding_payments', 'payments'];
             collections.forEach(col => loadCollection(col));
+            
+            // Restore previous tab state after a short delay to ensure DOM is ready
+            setTimeout(() => {
+                try {
+                    const savedTab = localStorage.getItem('currentTab');
+                    if (savedTab && document.getElementById(`tab-${savedTab}`)) {
+                        const tabBtn = document.querySelector(`[data-tab="${savedTab}"]`);
+                        if (tabBtn) {
+                            switchTab(tabBtn, savedTab);
+                            // If investments tab, also restore the investment subtab
+                            if (savedTab === 'investments') {
+                                const savedInvTab = localStorage.getItem('currentInvTab') || 'all';
+                                switchInvTab(savedInvTab);
+                            }
+                        }
+                    } else {
+                        // Default to expenses tab if no saved state
+                        const expensesBtn = document.querySelector('[data-tab="expenses"]');
+                        if (expensesBtn) switchTab(expensesBtn, 'expenses');
+                    }
+                } catch (e) {
+                    console.warn('Tab state restore error:', e);
+                    // Default to expenses tab on error
+                    const expensesBtn = document.querySelector('[data-tab="expenses"]');
+                    if (expensesBtn) switchTab(expensesBtn, 'expenses');
+                }
+            }, 100);
             // Light delay to avoid blocking UI
             setTimeout(() => { syncAllFromFirebase(); }, 300);
+            // Setup invoice form listeners
+            setTimeout(() => { setupInvoiceFormListeners(); }, 50);
             // After syncing, auto-check cloud status to show sample keys
             setTimeout(() => { checkCloudStatus(); }, 600);
             // Populate company autocomplete
@@ -1548,7 +2889,7 @@
             
             const build = '2026-01-29T' + new Date().toTimeString().slice(0,8);
             document.getElementById('build-version').textContent = `Build: ${build}`;
-            console.log('✓ Gulistan Management System Initialized');
+            console.log('✓ Gulistan Supermarket & Halal Meat Initialized');
             console.log('✓ Firebase Firestore Connected');
             console.log('✓ Build version:', build);
 
@@ -1582,6 +2923,29 @@
                     renderTable(tab, filtered);
                 });
             });
+
+            // Investment investor tab searches
+            const hayatSearch = document.getElementById('inv-hayat-search');
+            if (hayatSearch) {
+                hayatSearch.addEventListener('input', () => {
+                    const q = hayatSearch.value.toLowerCase();
+                    const rows = LocalDB.getCollection('investments').filter(r => r.investor === 'Haji Hayat');
+                    const filtered = rows.filter(r => JSON.stringify(r).toLowerCase().includes(q));
+                    renderTableToContainer('investments', filtered, 'investments-hayat-table');
+                    updateInvestorTotal('hayat', filtered);
+                });
+            }
+
+            const abbasSearch = document.getElementById('inv-abbas-search');
+            if (abbasSearch) {
+                abbasSearch.addEventListener('input', () => {
+                    const q = abbasSearch.value.toLowerCase();
+                    const rows = LocalDB.getCollection('investments').filter(r => r.investor === 'Abbas');
+                    const filtered = rows.filter(r => JSON.stringify(r).toLowerCase().includes(q));
+                    renderTableToContainer('investments', filtered, 'investments-abbas-table');
+                    updateInvestorTotal('abbas', filtered);
+                });
+            }
         });
 
         // Company autocomplete list (based on existing invoices + suppliers)
@@ -1619,7 +2983,7 @@
         // Printing helpers
         function buildPrintHeader(title) {
             const logo = '<img src="logo.png" alt="Logo" style="height:48px;margin-bottom:8px" onerror="this.style.display=\'none\'">';
-            const company = '<div style="font-weight:700;font-size:16px">Gulistan - Management System</div>';
+            const company = '<div style="font-weight:700;font-size:16px">Gulistan Supermarket & Halal Meat - Management System</div>';
             const sub = `<div style="font-size:12px;color:#374151">${new Date().toLocaleString()}</div>`;
             return `<div class="print-header">${logo}${company}${sub}<div style="margin-top:8px;font-weight:600">${title}</div></div>`;
         }
@@ -1673,7 +3037,7 @@
                 rows.forEach(r => {
                     const key = getMonthKey(r.date || r.createdAt);
                     const amt = parseFloat(r.amount) || 0;
-                    const isPaid = (r.paid === 'Yes');
+                    const isPaid = (r.paid !== 'No');
                     const cur = monthly.get(key) || { paid:0, unpaid:0 };
                     if (isPaid) cur.paid += amt; else cur.unpaid += amt;
                     monthly.set(key, cur);
@@ -1777,6 +3141,21 @@
                 html += `<tr><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">${c.label}</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${val ?? ''}</td></tr>`;
             });
             html += '</table>';
+            
+            // Add payment history for invoices
+            if (collection === 'invoices') {
+                const payments = LocalDB.getCollection('payments').filter(p => p.invoiceNum === row.num);
+                if (payments.length > 0) {
+                    html += '<h3 style="margin-top:20px;margin-bottom:10px">Payment History</h3>';
+                    html += '<table style="width:100%;border-collapse:collapse">';
+                    html += '<thead><tr style="background:#f3f4f6"><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">Date</th><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">Amount</th><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">Method</th></tr></thead>';
+                    payments.forEach(p => {
+                        html += `<tr><td style="padding:8px;border-bottom:1px solid #e5e7eb">${formatDate(p.paidOn)}</td><td style="padding:8px;border-bottom:1px solid #e5e7eb">${formatCurrency(p.amount)}</td><td style="padding:8px;border-bottom:1px solid #e5e7eb">${p.paymentMethod}</td></tr>`;
+                    });
+                    html += '</table>';
+                }
+            }
+            
             const win = window.open('', '_blank');
             if (!win) return notify('Popup blocked: enable popups to print', 'error');
             win.document.write(`<html><head><title>${collection} Item</title>
@@ -1853,6 +3232,21 @@
                 table += `<tr><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">${c.label}</th><td style="padding:8px;border-bottom:1px solid #e5e7eb">${val ?? ''}</td></tr>`;
             });
             table += '</table>';
+            
+            // Add payment history for invoices
+            if (collection === 'invoices') {
+                const payments = LocalDB.getCollection('payments').filter(p => p.invoiceNum === row.num);
+                if (payments.length > 0) {
+                    table += '<h3 style="margin-top:20px;margin-bottom:10px">Payment History</h3>';
+                    table += '<table style="width:100%;border-collapse:collapse">';
+                    table += '<thead><tr style="background:#f3f4f6"><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">Date</th><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">Amount</th><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">Method</th></tr></thead>';
+                    payments.forEach(p => {
+                        table += `<tr><td style="padding:8px;border-bottom:1px solid #e5e7eb">${formatDate(p.paidOn)}</td><td style="padding:8px;border-bottom:1px solid #e5e7eb">${formatCurrency(p.amount)}</td><td style="padding:8px;border-bottom:1px solid #e5e7eb">${p.paymentMethod}</td></tr>`;
+                    });
+                    table += '</table>';
+                }
+            }
+            
             const shareText = cols.map(c => `${c.label}: ${row[c.key] ?? ''}`).join(' | ');
             openPrintPreviewHTML(`${collection.toUpperCase()} Item`, table, shareText);
         }
@@ -1885,6 +3279,71 @@
                 notify('Copied summary to clipboard');
             }
         }
+    </script>
+    
+    <!-- Browser Compatibility Script -->
+    <script>
+        // Detect browser and add compatibility flags
+        const userAgent = navigator.userAgent;
+        const isChrome = /Chrome/.test(userAgent) && /Google Inc/.test(navigator.vendor);
+        const isFirefox = /Firefox/.test(userAgent);
+        const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent);
+        const isEdge = /Edg/.test(userAgent);
+        
+        // Store browser info in window for conditional fixes
+        window.browserInfo = {
+            isChrome,
+            isFirefox,
+            isSafari,
+            isEdge,
+            isMobile: /iPhone|iPad|iPod|Android/.test(userAgent)
+        };
+        
+        // Fix for Safari iOS viewport height issue
+        if (window.browserInfo.isSafari && window.browserInfo.isMobile) {
+            const fixViewportHeight = () => {
+                const vh = window.innerHeight * 0.01;
+                document.documentElement.style.setProperty('--vh', `${vh}px`);
+            };
+            fixViewportHeight();
+            window.addEventListener('resize', fixViewportHeight);
+            window.addEventListener('orientationchange', fixViewportHeight);
+            // Use CSS variable for height: height: 100vh; /* fallback */ height: calc(var(--vh, 1vh) * 100);
+        }
+        
+        // Polyfill for Object.hasOwn (Edge/older Safari)
+        if (typeof Object.hasOwn !== 'function') {
+            Object.hasOwn = function(obj, prop) {
+                return Object.prototype.hasOwnProperty.call(obj, prop);
+            };
+        }
+        
+        // Polyfill for String.prototype.replaceAll (older Edge)
+        if (!String.prototype.replaceAll) {
+            String.prototype.replaceAll = function(str, newStr) {
+                if (Object.prototype.toString.call(str) === '[object RegExp]') {
+                    return this.replace(str, newStr);
+                }
+                return this.replace(new RegExp(str, 'g'), newStr);
+            };
+        }
+        
+        // Fix for Firefox localStorage in private mode
+        if (window.browserInfo.isFirefox) {
+            const testStorage = () => {
+                try {
+                    const test = '__test__';
+                    localStorage.setItem(test, test);
+                    localStorage.removeItem(test);
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            };
+            window.storageAvailable = testStorage();
+        }
+        
+        console.log('✓ Browser Compatibility initialized:', window.browserInfo);
     </script>
 </body>
 </html>
