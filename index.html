@@ -222,6 +222,44 @@
         .print-header { display: none; text-align: center; margin-bottom: 16px; }
         .toolbar-btn { font-size: 12px; padding: 6px 10px; }
         
+        /* Action buttons responsive wrapper */
+        .action-buttons {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            max-width: 100%;
+        }
+        
+        @media (max-width: 480px) {
+            .action-buttons {
+                gap: 3px;
+                justify-content: center;
+            }
+            .toolbar-btn {
+                padding: 2px 3px !important;
+                font-size: 11px !important;
+                min-width: 28px;
+                min-height: 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .toolbar-btn i { font-size: 14px; }
+        }
+        
+        @media (max-width: 340px) {
+            .action-buttons {
+                gap: 2px;
+            }
+            .toolbar-btn {
+                padding: 2px 3px !important;
+                font-size: 9px !important;
+                min-width: 24px;
+                min-height: 24px;
+            }
+            .toolbar-btn i { font-size: 12px; }
+        }
+        
         /* Mobile Responsive Design */
         @media (max-width: 768px) {
             body { font-size: 14px; }
@@ -377,7 +415,7 @@
         <div class="glass p-6 mb-6 rounded-xl">
             <div class="flex items-center justify-between gap-4 flex-wrap">
                 <div class="flex items-center gap-3">
-                    <img src="logo.png" alt="Logo" class="w-10 h-10 rounded-xl object-cover" onerror="this.style.display='none'">
+                    <img src="logo.png" alt="Logo" class="w-16 h-16 md:w-12 md:h-12 rounded-xl object-cover" onerror="this.style.display='none'" style="flex-shrink:0">
                     <div>
                         <h1 class="text-3xl font-bold mb-1">Gulistan Supermarket & Halal Meat</h1>
                         <p class="text-gray-400 text-sm">Management System</p>
@@ -1959,13 +1997,13 @@
                                     html += `<td style="padding:8px">${(val ?? 'N/A')}</td>`;
                                 });
                                 const id = row.id || '';
-                                html += `<td style="padding:8px"><div class="flex gap-2">
-                                    <button class="btn btn-primary toolbar-btn no-print" onclick="togglePaymentHistory('${id}')"><i class='fas fa-history'></i></button>
-                                    <button class="btn btn-primary toolbar-btn no-print" onclick="openEditModal('${collection}', '${id}')"><i class='fas fa-pen'></i></button>
-                                    <button class="btn btn-primary toolbar-btn no-print" onclick="shareRecord('${collection}', '${id}')"><i class='fas fa-share-alt'></i></button>
-                                    <button class="btn btn-danger toolbar-btn no-print" onclick="deleteFromCollection('${collection}', '${id}')"><i class='fas fa-trash'></i></button>
-                                    <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForRow('${collection}', '${id}')"><i class='fas fa-eye'></i></button>
-                                    <button class="btn btn-primary toolbar-btn no-print" onclick="printRow('${collection}', '${id}')"><i class='fas fa-print'></i></button>
+                                html += `<td style="padding:8px"><div class="action-buttons">
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="togglePaymentHistory('${id}')" title="History"><i class='fas fa-history'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="openEditModal('${collection}', '${id}')" title="Edit"><i class='fas fa-pen'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="shareRecord('${collection}', '${id}')" title="Share"><i class='fas fa-share-alt'></i></button>
+                                    <button class="btn btn-danger toolbar-btn no-print" onclick="deleteFromCollection('${collection}', '${id}')" title="Delete"><i class='fas fa-trash'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForRow('${collection}', '${id}')" title="Preview"><i class='fas fa-eye'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="printRow('${collection}', '${id}')" title="Print"><i class='fas fa-print'></i></button>
                                 </div></td>`;
                                 html += '</tr>';
                                 
@@ -2084,13 +2122,13 @@
                                     html += `<td style="padding:8px">${(val ?? 'N/A')}</td>`;
                                 });
                                 const id = row.id || '';
-                                html += `<td style="padding:8px"><div class="flex gap-2">
-                                    <button class="btn btn-primary toolbar-btn no-print" onclick="toggleOutstandingHistory('${id}')"><i class='fas fa-history'></i></button>
-                                    <button class="btn btn-primary toolbar-btn no-print" onclick="openOutstandingEditModal('${id}')"><i class='fas fa-pen'></i></button>
-                                    <button class="btn btn-primary toolbar-btn no-print" onclick="shareRecord('${collection}', '${id}')"><i class='fas fa-share-alt'></i></button>
-                                    <button class="btn btn-danger toolbar-btn no-print" onclick="deleteFromCollection('${collection}', '${id}')"><i class='fas fa-trash'></i></button>
-                                    <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForRow('${collection}', '${id}')"><i class='fas fa-eye'></i></button>
-                                    <button class="btn btn-primary toolbar-btn no-print" onclick="printRow('${collection}', '${id}')"><i class='fas fa-print'></i></button>
+                                html += `<td style="padding:8px"><div class="action-buttons">
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="toggleOutstandingHistory('${id}')" title="History"><i class='fas fa-history'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="openOutstandingEditModal('${id}')" title="Edit"><i class='fas fa-pen'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="shareRecord('${collection}', '${id}')" title="Share"><i class='fas fa-share-alt'></i></button>
+                                    <button class="btn btn-danger toolbar-btn no-print" onclick="deleteFromCollection('${collection}', '${id}')" title="Delete"><i class='fas fa-trash'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForRow('${collection}', '${id}')" title="Preview"><i class='fas fa-eye'></i></button>
+                                    <button class="btn btn-primary toolbar-btn no-print" onclick="printRow('${collection}', '${id}')" title="Print"><i class='fas fa-print'></i></button>
                                 </div></td>`;
                                 html += '</tr>';
                                 
