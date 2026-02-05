@@ -1459,7 +1459,13 @@
             addToCollection('outstanding_payments', paymentData);
             displayOutstandingPaymentHistory(outstandingId);
             document.getElementById('out-pay-amount').value = '';
-            notify('Payment recorded successfully', 'success');
+            notify('Payment recorded successfully!', 'success');
+            
+            // Auto-refresh outstanding table
+            setTimeout(() => {
+                const outstanding = LocalDB.getCollection('outstanding');
+                renderTable('outstanding', outstanding);
+            }, 200);
         }
 
         function deleteOutstandingPayment(paymentId, outstandingId) {
@@ -2585,7 +2591,13 @@
             
             updateInCollection(editState.collection, editState.id, updated);
             closeEditModal();
-            notify('Record updated');
+            notify('Record updated successfully!', 'success');
+            
+            // Auto-refresh the table after a short delay to show updates
+            setTimeout(() => {
+                const data = LocalDB.getCollection(editState.collection);
+                renderTable(editState.collection, data);
+            }, 200);
         }
 
         // Data Sync & Seeding
