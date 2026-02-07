@@ -646,7 +646,7 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Company</label>
-                        <input type="text" id="inv-customer" class="input" placeholder="Company name" autocomplete="off">
+                        <input type="text" id="inv-customer" class="input" placeholder="Company name" list="companies-list" autocomplete="off">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Amount</label>
@@ -1941,8 +1941,14 @@
             const customerInput = document.getElementById('inv-customer');
             if (!customerInput) return;
             
-            // Disable autocomplete to prevent field locking
-            // The datalist will still work for dropdown suggestions
+            // Show datalist suggestions on focus or when typing
+            const showSuggestions = () => {
+                // The native datalist will handle showing suggestions
+                // No JavaScript manipulation needed
+            };
+            
+            customerInput.addEventListener('focus', showSuggestions);
+            customerInput.addEventListener('input', showSuggestions);
         }
         
         function renderTable(collection, data) {
