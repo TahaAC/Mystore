@@ -1985,16 +1985,12 @@
                     // Highlight the suggested part
                     customerInput.setSelectionRange(typed.length, match.length);
                     
-                    // Auto-populate BSB and Account from the most recent invoice with this company
-                    const recentInvoice = invoices
-                        .filter(inv => inv.customer === match)
-                        .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-                    
-                    if (recentInvoice) {
-                        if (recentInvoice.bsb) bsbInput.value = recentInvoice.bsb;
-                        if (recentInvoice.account) accountInput.value = recentInvoice.account;
-                    }
+                    // Note: BSB and Account auto-fill removed to prevent locking issues
+                    // Users can manually fill these fields or use the datalist dropdown
                 }
+                
+                // Ensure field remains enabled after autocomplete
+                ensureEnabled();
             });
         }
         
