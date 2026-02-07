@@ -1,5 +1,4 @@
 {
-  "name": "gulistan-management",
   "version": 2,
   "public": false,
   "env": {
@@ -7,16 +6,10 @@
     "FIREBASE_AUTH_DOMAIN": "gulistan-store.firebaseapp.com",
     "FIREBASE_PROJECT_ID": "gulistan-store"
   },
-  "builds": [
+  "rewrites": [
     {
-      "src": "index.html",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
