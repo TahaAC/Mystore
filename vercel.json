@@ -1,15 +1,5 @@
 {
-  "version": 2,
   "public": false,
-  "env": {
-    "FIREBASE_API_KEY": "AIzaSyBcHY8XLvoaKVyilWHwfNdOYpqGQ9Gswik",
-    "FIREBASE_AUTH_DOMAIN": "gulistan-store.firebaseapp.com",
-    "FIREBASE_PROJECT_ID": "gulistan-store"
-  },
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ]
+  "cleanUrls": true,
+  "trailingSlash": false
 }
