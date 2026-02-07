@@ -1972,16 +1972,6 @@
                     if (recentInvoice) {
                         if (recentInvoice.bsb) bsbInput.value = recentInvoice.bsb;
                         if (recentInvoice.account) accountInput.value = recentInvoice.account;
-                        updateLockState();
-                        // Trigger the lock state update for BSB and Account
-                        if (bsbInput.value.trim() !== '') {
-                            bsbInput.disabled = true;
-                            bsbInput.classList.add('opacity-50', 'cursor-not-allowed');
-                        }
-                        if (accountInput.value.trim() !== '') {
-                            accountInput.disabled = true;
-                            accountInput.classList.add('opacity-50', 'cursor-not-allowed');
-                        }
                     }
                 }
             });
