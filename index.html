@@ -324,21 +324,18 @@
             }
             
             /* Make tables scrollable horizontally on mobile */
-            table { 
-                display: block;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                white-space: nowrap;
+            .overflow-x-auto {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
             }
-            table thead,
-            table tbody,
-            table tr { 
-                display: table; 
+            .overflow-x-auto > div > table,
+            .overflow-x-auto table { 
+                display: table;
                 width: 100%;
                 table-layout: auto;
             }
-            table th,
-            table td {
+            .overflow-x-auto table th,
+            .overflow-x-auto table td {
                 white-space: nowrap;
             }
         }
@@ -649,7 +646,7 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Company</label>
-                        <input type="text" id="inv-customer" class="input" placeholder="Company name" list="companies-list">
+                        <input type="text" id="inv-customer" class="input" placeholder="Company name" list="companies-list" autocomplete="off">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Amount</label>
@@ -705,6 +702,8 @@
                         <label class="text-sm text-gray-300">GST %</label>
                         <input id="gst-rate" class="input" type="number" value="10" min="0" max="100" style="width:90px">
                     </div>
+                    <button class="btn btn-success toolbar-btn no-print" onclick="expandAllInvoiceGroups()" title="Expand All Groups"><i class="fas fa-expand-alt mr-1"></i>Expand All</button>
+                    <button class="btn btn-danger toolbar-btn no-print" onclick="collapseAllInvoiceGroups()" title="Collapse All Groups"><i class="fas fa-compress-alt mr-1"></i>Collapse All</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForTable('invoices')"><i class="fas fa-eye mr-1"></i>Preview</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="printTable('invoices')"><i class="fas fa-print mr-1"></i>Print</button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="exportCSV('invoices')"><i class="fas fa-file-export mr-1"></i>Export</button>
@@ -831,6 +830,10 @@
                     <div class="form-group flex items-end">
                         <button class="btn btn-primary w-full" onclick="addOutstanding()"><i class="fas fa-plus mr-2"></i>Add</button>
                     </div>
+                </div>
+                <div class="flex items-center gap-2 mb-2">
+                    <button class="btn btn-success toolbar-btn no-print" onclick="expandAllOutstandingGroups()" title="Expand All Groups"><i class="fas fa-expand-alt mr-1"></i>Expand All</button>
+                    <button class="btn btn-danger toolbar-btn no-print" onclick="collapseAllOutstandingGroups()" title="Collapse All Groups"><i class="fas fa-compress-alt mr-1"></i>Collapse All</button>
                 </div>
                 <div id="outstanding-totals" class="text-sm text-gray-300"></div>
                 <div class="overflow-x-auto">
@@ -1442,6 +1445,78 @@
             renderTable('outstanding', outstanding);
         }
 
+        function expandAllInvoiceGroups() {
+            const invoices = LocalDB.getCollection('invoices');
+            const grouped = {};
+            invoices.forEach(row => {
+                const company = row.customer || 'Unknown';
+                if (!grouped[company]) grouped[company] = [];
+                grouped[company].push(row);
+            });
+            Object.keys(grouped).forEach(company => {
+                try {
+                    sessionStorage.setItem(`expand_${company}`, 'true');
+                } catch (e) {
+                    console.warn('Session storage blocked:', e.message);
+                }
+            });
+            renderTable('invoices', invoices);
+        }
+
+        function collapseAllInvoiceGroups() {
+            const invoices = LocalDB.getCollection('invoices');
+            const grouped = {};
+            invoices.forEach(row => {
+                const company = row.customer || 'Unknown';
+                if (!grouped[company]) grouped[company] = [];
+                grouped[company].push(row);
+            });
+            Object.keys(grouped).forEach(company => {
+                try {
+                    sessionStorage.setItem(`expand_${company}`, 'false');
+                } catch (e) {
+                    console.warn('Session storage blocked:', e.message);
+                }
+            });
+            renderTable('invoices', invoices);
+        }
+
+        function expandAllOutstandingGroups() {
+            const outstanding = LocalDB.getCollection('outstanding');
+            const grouped = {};
+            outstanding.forEach(row => {
+                const customer = row.customer || 'Unknown';
+                if (!grouped[customer]) grouped[customer] = [];
+                grouped[customer].push(row);
+            });
+            Object.keys(grouped).forEach(customer => {
+                try {
+                    sessionStorage.setItem(`expand_out_${customer}`, 'true');
+                } catch (e) {
+                    console.warn('Session storage blocked:', e.message);
+                }
+            });
+            renderTable('outstanding', outstanding);
+        }
+
+        function collapseAllOutstandingGroups() {
+            const outstanding = LocalDB.getCollection('outstanding');
+            const grouped = {};
+            outstanding.forEach(row => {
+                const customer = row.customer || 'Unknown';
+                if (!grouped[customer]) grouped[customer] = [];
+                grouped[customer].push(row);
+            });
+            Object.keys(grouped).forEach(customer => {
+                try {
+                    sessionStorage.setItem(`expand_out_${customer}`, 'false');
+                } catch (e) {
+                    console.warn('Session storage blocked:', e.message);
+                }
+            });
+            renderTable('outstanding', outstanding);
+        }
+
         function openOutstandingEditModal(id) {
             const row = LocalDB.getDoc('outstanding', id);
             if (!row) return notify('Record not found', 'error');
@@ -1869,45 +1944,8 @@
             
             if (!bsbInput || !accountInput || !customerInput) return;
             
-            // Function to check if BSB or Account have values and lock/unlock accordingly
-            function updateLockState() {
-                const hasBsb = bsbInput.value.trim() !== '';
-                const hasAccount = accountInput.value.trim() !== '';
-                const isLocked = hasBsb || hasAccount;
-                
-                customerInput.disabled = isLocked;
-                if (isLocked) {
-                    customerInput.classList.add('opacity-50', 'cursor-not-allowed');
-                } else {
-                    customerInput.classList.remove('opacity-50', 'cursor-not-allowed');
-                }
-            }
-            
-            // Lock BSB and Account inputs when they have values
-            bsbInput.addEventListener('input', () => {
-                bsbInput.disabled = bsbInput.value.trim() !== '';
-                if (bsbInput.disabled) {
-                    bsbInput.classList.add('opacity-50', 'cursor-not-allowed');
-                } else {
-                    bsbInput.classList.remove('opacity-50', 'cursor-not-allowed');
-                }
-                updateLockState();
-            });
-            
-            accountInput.addEventListener('input', () => {
-                accountInput.disabled = accountInput.value.trim() !== '';
-                if (accountInput.disabled) {
-                    accountInput.classList.add('opacity-50', 'cursor-not-allowed');
-                } else {
-                    accountInput.classList.remove('opacity-50', 'cursor-not-allowed');
-                }
-                updateLockState();
-            });
-            
             // Auto-fill company name when typing (autocomplete)
             customerInput.addEventListener('input', (e) => {
-                if (customerInput.disabled) return; // Don't autocomplete if locked
-                
                 const typed = customerInput.value.trim().toLowerCase();
                 if (typed.length === 0) return;
                 
