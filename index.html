@@ -1938,35 +1938,11 @@
 
         // Setup invoice form auto-lock and auto-fill
         function setupInvoiceFormListeners() {
-            const bsbInput = document.getElementById('inv-bsb');
-            const accountInput = document.getElementById('inv-account');
             const customerInput = document.getElementById('inv-customer');
+            if (!customerInput) return;
             
-            if (!bsbInput || !accountInput || !customerInput) return;
-            
-            // Function to ensure customer input is never disabled
-            const ensureEnabled = () => {
-                customerInput.disabled = false;
-                customerInput.readOnly = false;
-                customerInput.classList.remove('opacity-50', 'cursor-not-allowed');
-                customerInput.removeAttribute('disabled');
-                customerInput.removeAttribute('readonly');
-            };
-            
-            // Ensure enabled on setup
-            ensureEnabled();
-            
-            // Keep checking to prevent any code from disabling it
-            setInterval(ensureEnabled, 100);
-            
-            // Also ensure on focus and click
-            customerInput.addEventListener('focus', ensureEnabled);
-            customerInput.addEventListener('click', ensureEnabled);
-            customerInput.addEventListener('mousedown', ensureEnabled);
-            
-            // Auto-fill company name when typing (autocomplete)
+            // Simple autocomplete without any field locking
             customerInput.addEventListener('input', (e) => {
-                ensureEnabled(); // Ensure enabled before processing
                 const typed = customerInput.value.trim().toLowerCase();
                 if (typed.length === 0) return;
                 
@@ -1984,13 +1960,7 @@
                     customerInput.value = match;
                     // Highlight the suggested part
                     customerInput.setSelectionRange(typed.length, match.length);
-                    
-                    // Note: BSB and Account auto-fill removed to prevent locking issues
-                    // Users can manually fill these fields or use the datalist dropdown
                 }
-                
-                // Ensure field remains enabled after autocomplete
-                ensureEnabled();
             });
         }
         
@@ -2179,7 +2149,7 @@
                         </div>`;
                         
                         if (isOpen) {
-                            html += '<table style="width:100%;border-collapse:collapse">';
+                            html += '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;border-collapse:collapse;min-width:600px">';
                             html += '<thead><tr style="background:#0f172a">';
                             cols.forEach(c => { html += `<th style="padding:8px;border-bottom:1px solid #3b82f6;word-break:break-word">${c.label}</th>`; });
                             html += '<th style="padding:8px;border-bottom:1px solid #3b82f6">Actions</th></tr></thead><tbody>';
@@ -2249,7 +2219,7 @@
                                     </tr>`;
                                 }
                             });
-                            html += '</tbody></table>';
+                            html += '</tbody></table></div>';
                         }
                         html += '</div>';
                     });
