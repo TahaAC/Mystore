@@ -1944,12 +1944,29 @@
             
             if (!bsbInput || !accountInput || !customerInput) return;
             
-            // Ensure customer input is never disabled
-            customerInput.disabled = false;
-            customerInput.classList.remove('opacity-50', 'cursor-not-allowed');
+            // Function to ensure customer input is never disabled
+            const ensureEnabled = () => {
+                customerInput.disabled = false;
+                customerInput.readOnly = false;
+                customerInput.classList.remove('opacity-50', 'cursor-not-allowed');
+                customerInput.removeAttribute('disabled');
+                customerInput.removeAttribute('readonly');
+            };
+            
+            // Ensure enabled on setup
+            ensureEnabled();
+            
+            // Keep checking to prevent any code from disabling it
+            setInterval(ensureEnabled, 100);
+            
+            // Also ensure on focus and click
+            customerInput.addEventListener('focus', ensureEnabled);
+            customerInput.addEventListener('click', ensureEnabled);
+            customerInput.addEventListener('mousedown', ensureEnabled);
             
             // Auto-fill company name when typing (autocomplete)
             customerInput.addEventListener('input', (e) => {
+                ensureEnabled(); // Ensure enabled before processing
                 const typed = customerInput.value.trim().toLowerCase();
                 if (typed.length === 0) return;
                 
