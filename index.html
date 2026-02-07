@@ -16,6 +16,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="manifest" href="manifest.json">
     <style>
         :root {
             --primary: #1e3a8a;
@@ -1139,7 +1142,7 @@
             suppliers: {
                 columns: [
                     { key: 'name', label: 'Name' },
-                    { key: 'phone', label: 'Phone' },
+                    { key: 'phone', label: 'Phone', value: r => r.phone ? `<a href="tel:${r.phone}" style="color:#3b82f6;text-decoration:none" onclick="event.stopPropagation()">${r.phone}</a>` : 'N/A' },
                     { key: 'details', label: 'Product Details' }
                 ]
             },
@@ -1335,44 +1338,49 @@
             loadCollection(collection);
         }
 
-        function shareRecord(collection, id) {
+        async function shareRecord(collection, id) {
             const data = LocalDB.getDoc(collection, id);
             if (!data) { notify('Record not found', 'error'); return; }
             
-            // Create shareable text content
-            let shareText = '';
-            if (collection === 'invoices') {
-                shareText = `Invoice #${data.num}\nCompany: ${data.customer}\nTotal Amount: ${formatCurrency(data.amount)}\nPaid: ${data.paid}\nAmount Paid: ${formatCurrency(data.amountPaid)}\nAmount Unpaid: ${formatCurrency(data.amountUnpaid)}\nDate: ${formatDate(data.date)}`;
+            try {
+                notify('Generating PDF...', 'info');
+                openPrintPreviewForRow(collection, id);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                await shareFromOverlay();
+            } catch (e) {
+                console.error('Share error:', e);
+                // Fallback to text share
+                let shareText = '';
+                if (collection === 'invoices') {
+                    shareText = `Invoice #${data.num}\nCompany: ${data.customer}\nTotal Amount: ${formatCurrency(data.amount)}\nPaid: ${data.paid}\nAmount Paid: ${formatCurrency(data.amountPaid)}\nAmount Unpaid: ${formatCurrency(data.amountUnpaid)}\nDate: ${formatDate(data.date)}`;
+                    
+                    const payments = LocalDB.getCollection('payments').filter(p => p.invoiceNum === data.num);
+                    if (payments.length > 0) {
+                        shareText += '\n\n--- Payment History ---';
+                        payments.forEach(p => {
+                            shareText += `\nDate: ${formatDate(p.paidOn)} | Amount: ${formatCurrency(p.amount)} | Method: ${p.paymentMethod}`;
+                        });
+                    }
+                } else if (collection === 'expenses') {
+                    shareText = `Expense\nCategory: ${data.category}\nAmount: ${formatCurrency(data.amount)}\nDescription: ${data.description}\nDate: ${formatDate(data.date)}`;
+                } else if (collection === 'investments') {
+                    shareText = `Investment\nInvestor: ${data.investor}\nAmount: ${formatCurrency(data.amount)}\nPaid To: ${data.paidTo}\nDate: ${formatDate(data.date)}\nMethod: ${data.method}`;
+                } else {
+                    shareText = JSON.stringify(data, null, 2);
+                }
                 
-                // Include payment history
-                const payments = LocalDB.getCollection('payments').filter(p => p.invoiceNum === data.num);
-                if (payments.length > 0) {
-                    shareText += '\n\n--- Payment History ---';
-                    payments.forEach(p => {
-                        shareText += `\nDate: ${formatDate(p.paidOn)} | Amount: ${formatCurrency(p.amount)} | Method: ${p.paymentMethod}`;
+                if (navigator.share) {
+                    navigator.share({
+                        title: `${collection.charAt(0).toUpperCase() + collection.slice(1)} Record`,
+                        text: shareText
+                    }).catch(err => console.log('Share cancelled or failed:', err));
+                } else {
+                    navigator.clipboard.writeText(shareText).then(() => {
+                        notify('Record copied to clipboard!', 'success');
+                    }).catch(err => {
+                        notify('Could not copy to clipboard', 'error');
                     });
                 }
-            } else if (collection === 'expenses') {
-                shareText = `Expense\nCategory: ${data.category}\nAmount: ${formatCurrency(data.amount)}\nDescription: ${data.description}\nDate: ${formatDate(data.date)}`;
-            } else if (collection === 'investments') {
-                shareText = `Investment\nInvestor: ${data.investor}\nAmount: ${formatCurrency(data.amount)}\nPaid To: ${data.paidTo}\nDate: ${formatDate(data.date)}\nMethod: ${data.method}`;
-            } else {
-                shareText = JSON.stringify(data, null, 2);
-            }
-            
-            // Check if Web Share API is available
-            if (navigator.share) {
-                navigator.share({
-                    title: `${collection.charAt(0).toUpperCase() + collection.slice(1)} Record`,
-                    text: shareText
-                }).catch(err => console.log('Share cancelled or failed:', err));
-            } else {
-                // Fallback: Copy to clipboard
-                navigator.clipboard.writeText(shareText).then(() => {
-                    notify('Record copied to clipboard!', 'success');
-                }).catch(err => {
-                    notify('Could not copy to clipboard', 'error');
-                });
             }
         }
 
@@ -3069,11 +3077,24 @@
         }
 
         // Printing helpers
-        function buildPrintHeader(title) {
-            const logo = '<img src="logo.png" alt="Logo" style="height:48px;margin-bottom:8px" onerror="this.style.display=\'none\'">';
-            const company = '<div style="font-weight:700;font-size:16px">Gulistan Supermarket & Halal Meat - Management System</div>';
-            const sub = `<div style="font-size:12px;color:#374151">${new Date().toLocaleString()}</div>`;
-            return `<div class="print-header">${logo}${company}${sub}<div style="margin-top:8px;font-weight:600">${title}</div></div>`;
+        function buildPrintHeader(title, supplierInfo = null) {
+            const logo = '<div style="text-align:center;margin-bottom:12px"><img src="logo.png" alt="Gulistan Logo" style="max-height:80px;width:auto" onerror="this.style.display=\'none\'"></div>';
+            const company = '<div style="font-weight:700;font-size:18px;text-align:center;color:#1e3a8a">Gulistan Supermarket & Halal Meat</div>';
+            const companyDetails = '<div style="text-align:center;font-size:12px;color:#374151;margin-bottom:8px">Management System</div>';
+            const dateTime = `<div style="font-size:11px;color:#6b7280;text-align:center;margin-bottom:12px">${new Date().toLocaleString()}</div>`;
+            const titleSection = `<div style="margin-top:12px;margin-bottom:12px;font-weight:700;font-size:16px;text-align:center;border-bottom:2px solid #1e3a8a;padding-bottom:8px">${title}</div>`;
+            let supplierSection = '';
+            if (supplierInfo) {
+                supplierSection = `<div style="background:#f3f4f6;padding:10px;border-radius:6px;margin-bottom:12px;border-left:4px solid #1e3a8a">
+                    <div style="font-weight:600;color:#1e3a8a;margin-bottom:6px">Supplier Information</div>
+                    <div style="font-size:12px;color:#374151;line-height:1.6">
+                        <div><strong>Company:</strong> ${supplierInfo.name || 'N/A'}</div>
+                        ${supplierInfo.phone ? `<div><strong>Phone:</strong> <a href="tel:${supplierInfo.phone}" style="color:#3b82f6;text-decoration:none">${supplierInfo.phone}</a></div>` : ''}
+                        ${supplierInfo.details ? `<div><strong>Details:</strong> ${supplierInfo.details}</div>` : ''}
+                    </div>
+                </div>`;
+            }
+            return `<div class="print-header">${logo}${company}${companyDetails}${dateTime}${titleSection}${supplierSection}</div>`;
         }
 
         function buildSummaryHTML(collection, rows) {
@@ -3274,13 +3295,55 @@
         }
 
         async function shareFromOverlay() {
-            const txt = document.getElementById('print-content').dataset.shareText || '';
-            if (!txt) return notify('Nothing to share', 'error');
-            if (navigator.share) {
-                try { await navigator.share({ title: 'Report', text: txt }); } catch (e) {}
-            } else {
-                await navigator.clipboard.writeText(txt);
-                notify('Copied summary to clipboard');
+            try {
+                const element = document.getElementById('print-content');
+                const { jsPDF } = window.jspdf;
+                
+                if (!element || !jsPDF) {
+                    const txt = element ? element.dataset.shareText : '';
+                    if (!txt) return notify('Nothing to share', 'error');
+                    if (navigator.share) {
+                        await navigator.share({ title: 'Report', text: txt });
+                    } else {
+                        await navigator.clipboard.writeText(txt);
+                        notify('Copied summary to clipboard');
+                    }
+                    return;
+                }
+                
+                notify('Generating PDF...', 'info');
+                const canvas = await html2canvas(element, { scale: 2, logging: false });
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const imgWidth = 210;
+                const pageHeight = 297;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 0;
+                
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+                
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+                
+                const pdfBlob = pdf.output('blob');
+                const pdfFile = new File([pdfBlob], 'gulistan-report.pdf', { type: 'application/pdf' });
+                
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+                    await navigator.share({ files: [pdfFile], title: 'Gulistan Report' });
+                    notify('PDF shared successfully', 'success');
+                } else {
+                    pdf.save('gulistan-report.pdf');
+                    notify('PDF downloaded', 'success');
+                }
+            } catch (e) {
+                console.error('Share error:', e);
+                notify('Error generating PDF: ' + e.message, 'error');
             }
         }
 
@@ -3312,6 +3375,19 @@
             if (!row) return notify('Record not found', 'error');
             const schema = Schema[collection];
             const cols = (schema && schema.columns) ? schema.columns : Object.keys(row).filter(k => k!=='id' && k!=='createdAt').map(k => ({key:k,label:k}));
+            
+            // Get supplier info for invoices
+            let supplierInfo = null;
+            if (collection === 'invoices' && row.customer) {
+                const suppliers = LocalDB.getCollection('suppliers');
+                const supplier = suppliers.find(s => s.name === row.customer);
+                if (supplier) {
+                    supplierInfo = { name: supplier.name, phone: supplier.phone, details: supplier.details };
+                } else {
+                    supplierInfo = { name: row.customer };
+                }
+            }
+            
             let table = '<table style="width:100%;border-collapse:collapse">';
             cols.forEach(c => {
                 let val = row[c.key];
@@ -3336,7 +3412,10 @@
             }
             
             const shareText = cols.map(c => `${c.label}: ${row[c.key] ?? ''}`).join(' | ');
-            openPrintPreviewHTML(`${collection.toUpperCase()} Item`, table, shareText);
+            const container = document.getElementById('print-content');
+            container.innerHTML = buildPrintHeader(`${collection.toUpperCase()} Item`, supplierInfo) + table;
+            container.dataset.shareText = shareText || '';
+            document.getElementById('print-overlay').classList.add('active');
         }
 
         function exportCSV(collection) {
@@ -3356,15 +3435,24 @@
         async function shareTable(collection) {
             const rows = LocalDB.getCollection(collection);
             if (!rows.length) return notify('No data to share', 'error');
-            const headers = Object.keys(rows[0]).filter(k => k!=='id' && k!=='createdAt');
-            const text = rows.map(r => headers.map(h => `${h}: ${r[h] ?? ''}`).join(' | ')).join('\n');
-            if (navigator.share) {
-                try {
-                    await navigator.share({ title: `${collection} report`, text });
-                } catch (e) { notify('Share cancelled', 'error'); }
-            } else {
-                await navigator.clipboard.writeText(text);
-                notify('Copied summary to clipboard');
+            
+            try {
+                notify('Generating PDF...', 'info');
+                openPrintPreviewForTable(collection);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                await shareFromOverlay();
+            } catch (e) {
+                console.error('Share error:', e);
+                const headers = Object.keys(rows[0]).filter(k => k!=='id' && k!=='createdAt');
+                const text = rows.map(r => headers.map(h => `${h}: ${r[h] ?? ''}`).join(' | ')).join('\n');
+                if (navigator.share) {
+                    try {
+                        await navigator.share({ title: `${collection} report`, text });
+                    } catch (e2) { notify('Share cancelled', 'error'); }
+                } else {
+                    await navigator.clipboard.writeText(text);
+                    notify('Copied summary to clipboard');
+                }
             }
         }
         

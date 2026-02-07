@@ -1,0 +1,52 @@
+{
+  "name": "Gulistan Supermarket & Halal Meat Management",
+  "short_name": "Gulistan",
+  "description": "Complete management system for Gulistan Supermarket & Halal Meat",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#1e3a8a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "finance", "productivity"],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "scope": "/",
+  "shortcuts": [
+    {
+      "name": "Add Expense",
+      "short_name": "Expense",
+      "description": "Add a new expense",
+      "url": "/?tab=expenses",
+      "icons": [{ "src": "logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Add Invoice",
+      "short_name": "Invoice",
+      "description": "Add a new invoice",
+      "url": "/?tab=invoices",
+      "icons": [{ "src": "logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Suppliers",
+      "short_name": "Suppliers",
+      "description": "View suppliers",
+      "url": "/?tab=suppliers",
+      "icons": [{ "src": "logo.png", "sizes": "192x192" }]
+    }
+  ]
+}
