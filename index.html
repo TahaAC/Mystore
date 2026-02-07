@@ -2011,7 +2011,7 @@
                         </div>`;
                         
                         if (isOpen) {
-                            html += '<table style="width:100%;border-collapse:collapse">';
+                            html += '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;border-collapse:collapse;min-width:600px">';
                             html += '<thead><tr style="background:#0f172a">';
                             cols.forEach(c => { html += `<th style="padding:8px;border-bottom:1px solid #3b82f6;word-break:break-word">${c.label}</th>`; });
                             html += '<th style="padding:8px;border-bottom:1px solid #3b82f6">Actions</th></tr></thead><tbody>';
@@ -2081,7 +2081,7 @@
                                     </tr>`;
                                 }
                             });
-                            html += '</tbody></table>';
+                            html += '</tbody></table></div>';
                         }
                         html += '</div>';
                     });
@@ -2217,7 +2217,7 @@
                 }
                 
                 // Default table rendering for other collections
-                let html = '<table>';
+                let html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:600px;width:100%">';
                 html += '<thead><tr>';
                 cols.forEach(c => { html += `<th>${c.label}</th>`; });
                 html += '<th>Actions</th></tr></thead><tbody>';
@@ -2240,7 +2240,7 @@
                     </td>`;
                     html += '</tr>';
                 });
-                html += '</tbody></table>';
+                html += '</tbody></table></div>';
                 container.innerHTML = html;
                 updateTotals(collection, data);
             } catch (e) {
