@@ -98,6 +98,7 @@
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
+            min-width: 600px;
         }
         th {
             background: rgba(0, 0, 0, 0.3);
@@ -225,6 +226,7 @@
         /* Action buttons responsive wrapper */
         .action-buttons {
             display: flex;
+            flex-direction: row;
             gap: 6px;
             flex-wrap: wrap;
             max-width: 100%;
@@ -233,7 +235,12 @@
         @media (max-width: 480px) {
             .action-buttons {
                 gap: 3px;
-                justify-content: center;
+                flex-wrap: nowrap;
+                flex-direction: row;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                justify-content: flex-start;
+                align-items: center;
             }
             .toolbar-btn {
                 padding: 2px 3px !important;
@@ -243,6 +250,7 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                flex-shrink: 0;
             }
             .toolbar-btn i { font-size: 14px; }
         }
@@ -250,12 +258,18 @@
         @media (max-width: 340px) {
             .action-buttons {
                 gap: 2px;
+                flex-wrap: nowrap;
+                flex-direction: row;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                align-items: center;
             }
             .toolbar-btn {
                 padding: 2px 3px !important;
                 font-size: 9px !important;
                 min-width: 24px;
                 min-height: 24px;
+                flex-shrink: 0;
             }
             .toolbar-btn i { font-size: 12px; }
         }
@@ -309,9 +323,24 @@
                 gap: 8px !important;
             }
             
-            /* Make tables scrollable with better UX */
-            table thead tr { display: table; width: 100%; table-layout: fixed; }
-            table tbody tr { display: table; width: 100%; table-layout: fixed; }
+            /* Make tables scrollable horizontally on mobile */
+            table { 
+                display: block;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                white-space: nowrap;
+            }
+            table thead,
+            table tbody,
+            table tr { 
+                display: table; 
+                width: 100%;
+                table-layout: auto;
+            }
+            table th,
+            table td {
+                white-space: nowrap;
+            }
         }
         
         @media (max-width: 480px) {
@@ -339,6 +368,11 @@
             .text-3xl { font-size: 20px !important; }
             .flex.items-center.justify-between { flex-direction: column; align-items: flex-start; gap: 8px; }
             .form-group { margin-bottom: 10px; }
+            
+            /* Enhanced table scrolling for very small screens */
+            table { 
+                min-width: 500px;
+            }
             
             /* Vertical layout for form groups */
             .grid { grid-template-columns: 1fr !important; }
@@ -540,6 +574,7 @@
                 <div id="inv-hayat" class="tab-content" style="display:none;">
                     <div class="flex items-center gap-2 mb-2">
                         <input id="inv-hayat-search" class="input" placeholder="Search Haji Hayat" style="max-width:320px">
+                        <button class="btn btn-primary toolbar-btn no-print" onclick="shareInvestorTab('hayat')"><i class="fas fa-share-alt mr-1"></i>Share</button>
                         <button class="btn btn-primary toolbar-btn no-print" onclick="printInvestorTab('hayat')"><i class="fas fa-print mr-1"></i>Print</button>
                         <button class="btn btn-success toolbar-btn no-print" onclick="exportInvestmentsPDF('hayat')"><i class="fas fa-file-pdf mr-1"></i>PDF</button>
                     </div>
@@ -553,6 +588,7 @@
                 <div id="inv-abbas" class="tab-content" style="display:none;">
                     <div class="flex items-center gap-2 mb-2">
                         <input id="inv-abbas-search" class="input" placeholder="Search Abbas" style="max-width:320px">
+                        <button class="btn btn-primary toolbar-btn no-print" onclick="shareInvestorTab('abbas')"><i class="fas fa-share-alt mr-1"></i>Share</button>
                         <button class="btn btn-primary toolbar-btn no-print" onclick="printInvestorTab('abbas')"><i class="fas fa-print mr-1"></i>Print</button>
                         <button class="btn btn-success toolbar-btn no-print" onclick="exportInvestmentsPDF('abbas')"><i class="fas fa-file-pdf mr-1"></i>PDF</button>
                     </div>
@@ -1967,7 +2003,7 @@
                                 <span style="color:#cbd5e1;font-size:12px;white-space:nowrap">(${rows.length})</span>
                             </div>
                             <div style="color:#3b82f6;font-size:11px;text-align:right;flex:1;min-width:180px">
-                                <div style="margin-top:4px">Σ: ${formatCurrency(totalAmount)}</div>
+                                <div style="margin-top:4px">Total Amount: ${formatCurrency(totalAmount)}</div>
                                 <div>Bal: ${formatCurrency(totalBalance)}</div>
                             </div>
                         </div>`;
@@ -2092,7 +2128,7 @@
                                 <span style="color:#cbd5e1;font-size:12px;white-space:nowrap">(${rows.length})</span>
                             </div>
                             <div style="color:#3b82f6;font-size:11px;text-align:right;flex:1;min-width:180px">
-                                <div style="margin-top:4px">Σ: ${formatCurrency(totalAmount)}</div>
+                                <div style="margin-top:4px">Total Amount: ${formatCurrency(totalAmount)}</div>
                                 <div>Bal: ${formatCurrency(totalBalance)}</div>
                             </div>
                         </div>`;
@@ -3327,6 +3363,17 @@
             } else {
                 await navigator.clipboard.writeText(text);
                 notify('Copied summary to clipboard');
+            }
+        }
+        
+        async function shareInvestorTab(investor) {
+            try {
+                const investorName = investor === 'hayat' ? 'Haji Hayat' : 'Abbas';
+                // Export as PDF first, then share
+                await exportInvestmentsPDF(investor);
+                notify(`${investorName} PDF exported and ready to share`, 'success');
+            } catch (e) {
+                notify(`Error sharing ${investor} data: ${e.message}`, 'error');
             }
         }
     </script>
