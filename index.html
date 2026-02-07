@@ -1944,6 +1944,10 @@
             
             if (!bsbInput || !accountInput || !customerInput) return;
             
+            // Ensure customer input is never disabled
+            customerInput.disabled = false;
+            customerInput.classList.remove('opacity-50', 'cursor-not-allowed');
+            
             // Auto-fill company name when typing (autocomplete)
             customerInput.addEventListener('input', (e) => {
                 const typed = customerInput.value.trim().toLowerCase();
