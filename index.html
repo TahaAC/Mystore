@@ -1941,27 +1941,8 @@
             const customerInput = document.getElementById('inv-customer');
             if (!customerInput) return;
             
-            // Simple autocomplete without any field locking
-            customerInput.addEventListener('input', (e) => {
-                const typed = customerInput.value.trim().toLowerCase();
-                if (typed.length === 0) return;
-                
-                // Get all invoices and find similar company names
-                const invoices = LocalDB.getCollection('invoices');
-                const uniqueCompanies = [...new Set(invoices.map(inv => inv.customer).filter(c => c))];
-                
-                // Find best match (exact or similar)
-                const match = uniqueCompanies.find(company => 
-                    company.toLowerCase().startsWith(typed)
-                );
-                
-                if (match && match.toLowerCase() !== typed) {
-                    // Auto-fill the rest of the text
-                    customerInput.value = match;
-                    // Highlight the suggested part
-                    customerInput.setSelectionRange(typed.length, match.length);
-                }
-            });
+            // Disable autocomplete to prevent field locking
+            // The datalist will still work for dropdown suggestions
         }
         
         function renderTable(collection, data) {
