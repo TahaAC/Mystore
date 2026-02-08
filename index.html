@@ -223,7 +223,7 @@
             table th { background: #f3f4f6 !important; color: #111827 !important; border-bottom-color: #e5e7eb !important; }
             table td { border-bottom-color: #e5e7eb !important; color: #111827 !important; }
         }
-        .print-header { display: none; text-align: center; margin-bottom: 16px; }
+        .print-header { display: block; text-align: center; margin-bottom: 16px; }
         .toolbar-btn { font-size: 12px; padding: 6px 10px; }
         
         /* Action buttons responsive wrapper */
@@ -650,6 +650,10 @@
                     <div class="form-group">
                         <label class="form-label">Company</label>
                         <input type="text" id="inv-customer" class="input" placeholder="Company name" list="companies-list" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Invoice Date</label>
+                        <input type="date" id="inv-invoice-date" class="input">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Amount</label>
@@ -1859,6 +1863,7 @@
             const num = document.getElementById('inv-num').value;
             const customerRaw = document.getElementById('inv-customer').value;
             const customer = normalizeName(customerRaw);
+            const invoiceDate = document.getElementById('inv-invoice-date') ? document.getElementById('inv-invoice-date').value : '';
             const amount = parseFloat(document.getElementById('inv-price').value);
             const gstType = document.getElementById('inv-gst-type') ? document.getElementById('inv-gst-type').value : 'include';
             const gstRatePct = parseFloat(document.getElementById('gst-rate')?.value || '10');
@@ -1888,20 +1893,21 @@
                 amountUnpaid = totalAmount - customAmountPaid;
             } else if (paid === 'Full') {
                 amountPaid = totalAmount;
-                amountUnpaid = 0;
+                amountUnpaid = Math.max(0, totalAmount - totalAmount);
             } else if (paid === 'Half') {
                 amountPaid = totalAmount / 2;
-                amountUnpaid = totalAmount / 2;
+                amountUnpaid = Math.max(0, totalAmount - amountPaid);
             } else if (paid === 'Partially') {
                 amountPaid = totalAmount * 0.3; // 30% as default partial
-                amountUnpaid = totalAmount * 0.7;
+                amountUnpaid = Math.max(0, totalAmount - amountPaid);
             } else {
                 amountPaid = 0;
-                amountUnpaid = totalAmount;
+                amountUnpaid = Math.max(0, totalAmount - amountPaid);
             }
-            addToCollection('invoices', { num, customer, amount: totalAmount, date: new Date().toISOString().split('T')[0], paid, paidOn, paymentMethod, bsb, account, status, gstType, gstRate: isNaN(gstRatePct) ? 10 : gstRatePct, netAmount, gstAmount, amountPaid, amountUnpaid });
+            addToCollection('invoices', { num, customer, amount: totalAmount, date: invoiceDate || new Date().toISOString().split('T')[0], paid, paidOn, paymentMethod, bsb, account, status, gstType, gstRate: isNaN(gstRatePct) ? 10 : gstRatePct, netAmount, gstAmount, amountPaid, amountUnpaid });
             document.getElementById('inv-num').value = '';
             document.getElementById('inv-customer').value = '';
+            document.getElementById('inv-invoice-date').value = '';
             document.getElementById('inv-price').value = '';
             document.getElementById('inv-amount-paid').value = '';
             document.getElementById('inv-bsb').value = '';
@@ -2912,6 +2918,8 @@
 
             document.getElementById('expense-date').valueAsDate = new Date();
             document.getElementById('inv-date').valueAsDate = new Date();
+            const invoiceDateEl = document.getElementById('inv-invoice-date');
+            if (invoiceDateEl) invoiceDateEl.valueAsDate = new Date();
             document.getElementById('out-date').valueAsDate = new Date();
             const suppDateEl = document.getElementById('supp-date');
             if (suppDateEl) suppDateEl.valueAsDate = new Date();
@@ -2989,33 +2997,48 @@
             console.log('✓ Firebase Firestore Connected');
             console.log('✓ Build version:', build);
 
-            // Enable Paid On fields when Paid = Yes
+            // Keep Paid On calendars available, clear when not paid
             const invPaidSel = document.getElementById('inv-paid');
             const invPaidOn = document.getElementById('inv-paid-on');
             if (invPaidSel && invPaidOn) {
+                invPaidOn.disabled = false;
                 invPaidSel.addEventListener('change', () => {
-                    invPaidOn.disabled = invPaidSel.value !== 'Yes';
-                    if (invPaidOn.disabled) invPaidOn.value = '';
+                    if (invPaidSel.value === 'No') invPaidOn.value = '';
+                    invPaidOn.disabled = false;
                 });
             }
 
             const excStatusSel = document.getElementById('exc-status');
             const excPaidOn = document.getElementById('exc-paid-on');
             if (excStatusSel && excPaidOn) {
+                excPaidOn.disabled = false;
                 excStatusSel.addEventListener('change', () => {
-                    excPaidOn.disabled = excStatusSel.value !== 'Paid';
-                    if (excPaidOn.disabled) excPaidOn.value = '';
+                    if (excStatusSel.value !== 'Paid') excPaidOn.value = '';
+                    excPaidOn.disabled = false;
                 });
             }
 
-            // Simple search bindings per tab
+            // Smart search bindings per tab
             ['invoices','exchange','investments','suppliers'].forEach(tab => {
                 const input = document.getElementById(`${tab}-search`);
                 if (!input) return;
                 input.addEventListener('input', () => {
                     const q = input.value.toLowerCase();
                     const rows = LocalDB.getCollection(tab);
-                    const filtered = rows.filter(r => JSON.stringify(r).toLowerCase().includes(q));
+                    let filtered;
+                    if (tab === 'invoices') {
+                        filtered = rows.filter(r => {
+                            const invNum = (r.num || '').toString().toLowerCase();
+                            const customer = (r.customer || '').toLowerCase();
+                            const paid = (r.paid || '').toLowerCase();
+                            const method = (r.paymentMethod || '').toLowerCase();
+                            const date = (r.date || '').toString().toLowerCase();
+                            const amount = (r.amount || '').toString().toLowerCase();
+                            return invNum.includes(q) || customer.includes(q) || paid.includes(q) || method.includes(q) || date.includes(q) || amount.includes(q);
+                        });
+                    } else {
+                        filtered = rows.filter(r => JSON.stringify(r).toLowerCase().includes(q));
+                    }
                     renderTable(tab, filtered);
                 });
             });
