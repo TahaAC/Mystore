@@ -975,15 +975,47 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // LocalDB Fallback
+        // Storage availability check
+        let storageAvailable = false;
+        try {
+            const test = '__storage_test__';
+            localStorage.setItem(test, test);
+            localStorage.removeItem(test);
+            storageAvailable = true;
+            console.log('✅ localStorage available (data will persist)');
+        } catch (e) {
+            console.warn('⚠️ localStorage blocked (Tracking Prevention or private mode):', e.message);
+            console.warn('💾 Using in-memory storage only - data will be lost on refresh');
+            storageAvailable = false;
+        }
+
+        // LocalDB Fallback with in-memory backup
+        const inMemoryDB = {};
         const LocalDB = {
             getCollection(name) {
-                try { return JSON.parse(localStorage.getItem(`gulistan_${name}`) || '[]'); }
-                catch(e) { return []; }
+                try {
+                    if (storageAvailable) {
+                        return JSON.parse(localStorage.getItem(`gulistan_${name}`) || '[]');
+                    } else {
+                        // Fallback to in-memory for Tracking Prevention
+                        return (inMemoryDB[`gulistan_${name}`] = inMemoryDB[`gulistan_${name}`] || []);
+                    }
+                } catch(e) { 
+                    console.warn(`❌ Failed to get ${name}:`, e.message);
+                    return (inMemoryDB[`gulistan_${name}`] = inMemoryDB[`gulistan_${name}`] || []);
+                }
             },
             saveCollection(name, data) {
-                try { localStorage.setItem(`gulistan_${name}`, JSON.stringify(data)); }
-                catch(e) { console.warn('LocalDB save error (Tracking Prevention?):', e); }
+                try {
+                    if (storageAvailable) {
+                        localStorage.setItem(`gulistan_${name}`, JSON.stringify(data));
+                    } else {
+                        inMemoryDB[`gulistan_${name}`] = data;
+                    }
+                } catch(e) { 
+                    console.warn(`❌ LocalDB save error for ${name}:`, e.message);
+                    inMemoryDB[`gulistan_${name}`] = data;
+                }
             },
             addDoc(name, data) {
                 const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -1006,6 +1038,9 @@
             },
             getDoc(name, id) {
                 return this.getCollection(name).find(d => d.id === id);
+            },
+            isStorageAvailable() {
+                return storageAvailable;
             }
         };
 
@@ -1071,12 +1106,29 @@
             outstanding_payments: ['customer_payments', 'outstanding_payments', 'OutstandingPayments']
         };
         const CloudNameCacheKey = 'gulistan_cloud_names';
+        const inMemoryCloudNameCache = {};
         function getCloudNameCache() {
-            try { return JSON.parse(localStorage.getItem(CloudNameCacheKey) || '{}'); } catch { return {}; }
+            try {
+                if (storageAvailable) {
+                    return JSON.parse(localStorage.getItem(CloudNameCacheKey) || '{}');
+                } else {
+                    return inMemoryCloudNameCache;
+                }
+            } catch { 
+                return inMemoryCloudNameCache;
+            }
         }
         function setCloudNameCache(obj) {
-            try { localStorage.setItem(CloudNameCacheKey, JSON.stringify(obj || {})); }
-            catch(e) { console.warn('Cloud cache save error:', e); }
+            try {
+                if (storageAvailable) {
+                    localStorage.setItem(CloudNameCacheKey, JSON.stringify(obj || {}));
+                } else {
+                    Object.assign(inMemoryCloudNameCache, obj);
+                }
+            }
+            catch(e) { 
+                Object.assign(inMemoryCloudNameCache, obj);
+            }
         }
         const resolveColl = (name) => {
             const cache = getCloudNameCache();
@@ -1085,12 +1137,29 @@
 
         // Field name mapping (cloud <-> local) per collection
         const FieldMapKey = 'gulistan_field_map';
+        const inMemoryFieldMap = {};
         function getFieldMap() {
-            try { return JSON.parse(localStorage.getItem(FieldMapKey) || '{}'); } catch { return {}; }
+            try {
+                if (storageAvailable) {
+                    return JSON.parse(localStorage.getItem(FieldMapKey) || '{}');
+                } else {
+                    return inMemoryFieldMap;
+                }
+            } catch { 
+                return inMemoryFieldMap;
+            }
         }
         function setFieldMap(obj) {
-            try { localStorage.setItem(FieldMapKey, JSON.stringify(obj || {})); }
-            catch(e) { console.warn('Field map save error:', e); }
+            try {
+                if (storageAvailable) {
+                    localStorage.setItem(FieldMapKey, JSON.stringify(obj || {}'));
+                } else {
+                    Object.assign(inMemoryFieldMap, obj);
+                }
+            }
+            catch(e) { 
+                Object.assign(inMemoryFieldMap, obj);
+            }
         }
         // Map a cloud doc to local keys
         function mapRead(collection, doc) {
@@ -2237,8 +2306,6 @@
                                 if (showHistory && payments.length > 0) {
                                     const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
                                     const remaining = Math.max(0, invoiceAmount - totalPaid);
-                                                const payments = getInvoicePayments(paymentHistoryState.invoiceNum);
-                                                        const payments = getInvoicePayments(data.num);
                                     html += `<tr style="background:#0f172a;border-bottom:1px solid #1e293b">
                                         <td colspan="${cols.length + 1}" style="padding:12px">
                                             <div style="color:#cbd5e1;font-size:13px">
@@ -3764,10 +3831,20 @@
         // Firebase Diagnostics Functions
         async function refreshFirebaseDiagnostics() {
             const connEl = document.getElementById('firebase-connection-status');
+            const storageEl = document.getElementById('firebase-storage-status');
             const colEl = document.getElementById('firebase-collections');
             
             if (connEl) connEl.textContent = '🔄 Checking connection...';
             if (colEl) colEl.innerHTML = '';
+            
+            // Show storage status
+            if (storageEl) {
+                if (LocalDB.isStorageAvailable()) {
+                    storageEl.innerHTML = '<span style="color: rgb(74, 222, 128);">✅ Storage Available (persistent)</span>';
+                } else {
+                    storageEl.innerHTML = '<span style="color: rgb(248, 113, 113);">💾 In-Memory Only (Tracking Prevention)</span><div style="font-size:10px;margin-top:4px;color:rgb(156,163,175)">Data will be lost on refresh!</div>';
+                }
+            }
             
             try {
                 await db.collection('expenses').limit(1).get();
@@ -3783,13 +3860,15 @@
             // Show collection status
             const cols = ['expenses','investments','suppliers','invoices','exchange','cash','outstanding','outstanding_payments','payments'];
             let html = '';
+            let totalCollections = 0;
             
             for (const c of cols) {
                 try {
                     const collName = resolveColl(c);
-                    const snap = await db.collection(collName).limit(1).get();
+                    const snap = await db.collection(collName).get();
                     const count = snap.size;
                     const local = LocalDB.getCollection(c).length;
+                    totalCollections += count;
                     
                     const status = count > 0 ? `✅` : count === 0 ? '⚪' : '❌';
                     const synced = count === local ? '🔄' : '⚠️';
@@ -3804,6 +3883,7 @@
                 }
             }
             
+            html = `<div style="margin-bottom:8px;padding:8px;background:rgb(20,32,48);border-radius:4px;border-left:2px solid rgb(34,197,94);"><strong>Total Cloud Records: ${totalCollections}</strong></div>` + html;
             if (colEl) colEl.innerHTML = html;
         }
 
@@ -3842,14 +3922,15 @@
     </script>
 
     <!-- Firebase Diagnostics Panel -->
-    <div id="firebase-diagnostics" style="position: fixed; bottom: 60px; right: 20px; width: 340px; max-height: 450px; background: rgb(15, 23, 42); border: 2px solid rgb(59, 130, 246); border-radius: 8px; padding: 16px; color: rgb(203, 213, 225); font-size: 12px; font-family: 'Courier New', monospace; z-index: 9999; overflow-y: auto; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+    <div id="firebase-diagnostics" style="position: fixed; bottom: 60px; right: 20px; width: 340px; max-height: 480px; background: rgb(15, 23, 42); border: 2px solid rgb(59, 130, 246); border-radius: 8px; padding: 16px; color: rgb(203, 213, 225); font-size: 12px; font-family: 'Courier New', monospace; z-index: 9999; overflow-y: auto; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid rgb(71, 85, 105); padding-bottom: 10px;">
             <strong style="color: rgb(148, 163, 184); font-size: 13px;">🔧 Firebase Diagnostics</strong>
             <button onclick="document.getElementById('firebase-diagnostics').style.display='none'" style="background: none; border: none; color: rgb(148, 163, 184); cursor: pointer; font-size: 16px; padding: 0;">✕</button>
         </div>
+        <div id="firebase-storage-status" style="color: rgb(248, 113, 113); margin-bottom: 8px; border: 1px solid rgb(71, 85, 105); padding: 8px; border-radius: 4px; font-size: 11px;">Checking storage...</div>
         <div id="firebase-connection-status" style="color: rgb(248, 113, 113); margin-bottom: 10px; border: 1px solid rgb(71, 85, 105); padding: 8px; border-radius: 4px;">Initializing...</div>
         <div style="color: rgb(148, 163, 184); margin-bottom: 6px; font-size: 11px; font-weight: bold;">Collection Status:</div>
-        <div id="firebase-collections" style="max-height: 280px; overflow-y: auto; margin-bottom: 12px;"></div>
+        <div id="firebase-collections" style="max-height: 250px; overflow-y: auto; margin-bottom: 12px;"></div>
         <div style="border-top: 2px solid rgb(71, 85, 105); padding-top: 10px; margin-top: 10px; display: flex; gap: 6px;">
             <button onclick="manualFirebaseSync()" style="flex: 1; padding: 8px; background: rgb(34, 197, 94); border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 11px; font-weight: bold;">🔄 Force Sync</button>
             <button onclick="refreshFirebaseDiagnostics()" style="flex: 1; padding: 8px; background: rgb(59, 130, 246); border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 11px; font-weight: bold;">🔍 Refresh</button>
