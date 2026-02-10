@@ -1206,8 +1206,12 @@
                 ],
                 totals: [
                     { key: 'amount', label: 'Total' },
-                    { key: 'amountPaid', label: 'Total Paid' },
-                    { key: 'amountUnpaid', label: 'Total Balance' },
+                    { label: 'Total Paid', reducer: rows => {
+                        return rows.reduce((sum, r) => sum + getInvoicePaidTotal(r), 0);
+                    }},
+                    { label: 'Total Balance', reducer: rows => {
+                        return rows.reduce((sum, r) => sum + getInvoiceBalance(r), 0);
+                    }},
                     { label: 'Total GST', reducer: rows => rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0) * getGstRate() }
                 ]
             },
@@ -2150,7 +2154,6 @@
                             html += '<th style="padding:8px;border-bottom:1px solid #3b82f6">Actions</th></tr></thead><tbody>';
                             
                             rows.forEach(row => {
-                                const payments = LocalDB.getCollection('payments').filter(p => String(p.invoiceNum).trim() === String(row.num).trim());
                                 const payments = getInvoicePayments(row.num);
                                 const invoiceAmount = parseFloat(row.amount) || 0;
                                 const historyKey = `hist_${row.id}`;
