@@ -651,6 +651,13 @@
         <div class="tab" id="tab-invoices">
             <div class="glass p-6 rounded-xl">
                 <h2 class="text-2xl font-bold mb-4"><i class="fas fa-file-invoice mr-2"></i>Invoices</h2>
+                <div style="margin-bottom:15px">
+                    <button class="btn btn-primary" id="invoice-add-toggle" onclick="toggleInvoiceForm()" style="display:block"><i class="fas fa-plus mr-2"></i>Add Invoice</button>
+                </div>
+                <div id="invoice-form-container" style="display:none;margin-bottom:20px;padding:20px;background:#1e293b;border-radius:8px;border:1px solid #3b82f6">
+                <div style="margin-bottom:15px;text-right">
+                    <button class="btn btn-sm" style="background:#64748b;color:white;padding:6px 12px;font-size:12px;cursor:pointer;border:none;border-radius:4px" onclick="toggleInvoiceForm()">✕ Close</button>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
                     <div class="form-group">
                         <label class="form-label">Invoice #</label>
@@ -711,6 +718,7 @@
                     <div class="form-group flex items-end">
                         <button class="btn btn-primary w-full" onclick="addInvoice()"><i class="fas fa-plus mr-2"></i>Add</button>
                     </div>
+                </div>
                 </div>
                 <div class="flex items-center gap-2 mb-2">
                     <input id="invoices-search" class="input" placeholder="Search invoices" style="max-width:320px">
@@ -1912,6 +1920,20 @@
             if (invPaidOnEl) invPaidOnEl.disabled = true;
             const invGstType = document.getElementById('inv-gst-type');
             if (invGstType) invGstType.value = 'include';
+            toggleInvoiceForm(false);
+        }
+
+        function toggleInvoiceForm(show) {
+            const container = document.getElementById('invoice-form-container');
+            if (!container) return;
+            if (show === undefined) {
+                show = container.style.display === 'none';
+            }
+            container.style.display = show ? 'block' : 'none';
+            const addBtn = document.getElementById('invoice-add-toggle');
+            if (addBtn) {
+                addBtn.style.display = show ? 'none' : 'block';
+            }
         }
 
         function addInvoice() {
