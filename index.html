@@ -1351,42 +1351,62 @@
         async function addToCollection(collection, data) {
             // Generate a single ID and use it for both LocalDB and Firestore
             const id = LocalDB.addDoc(collection, data);
+            let firebaseSuccess = false;
             try {
                 const cloudData = mapWrite(collection, data);
                 await db.collection(resolveColl(collection)).doc(id).set(cloudData);
+                firebaseSuccess = true;
+                console.log(`✅ Firebase write successful for ${collection}:${id}`);
             } catch (e) {
-                console.warn('Firebase write error (using LocalDB fallback):', e);
-                notify(`Cloud write failed for ${collection}: ${e.message || e}`, 'error');
+                console.warn(`❌ Firebase write error for ${collection}:${id}`, e.code, e.message);
+                const msg = e.code === 'permission-denied' 
+                    ? `Firebase permission denied (check Firestore security rules for ${resolveColl(collection)})` 
+                    : `Firebase write failed: ${e.message}`;
+                notify(msg, 'error');
             }
             loadCollection(collection);
+            return { id, synced: firebaseSuccess };
         }
 
         async function updateInCollection(collection, id, data) {
             LocalDB.updateDoc(collection, id, data);
+            let firebaseSuccess = false;
             try {
                 const cloudData = mapWrite(collection, data);
                 await db.collection(resolveColl(collection)).doc(id).set(cloudData, { merge: true });
+                firebaseSuccess = true;
+                console.log(`✅ Firebase update successful for ${collection}:${id}`);
             } catch (e) {
-                console.warn('Firebase update error (updated locally):', e);
-                notify(`Cloud update failed for ${collection}: ${e.message || e}`, 'error');
+                console.warn(`❌ Firebase update error for ${collection}:${id}`, e.code, e.message);
+                const msg = e.code === 'permission-denied' 
+                    ? `Firebase permission denied (check Firestore security rules)` 
+                    : `Firebase update failed: ${e.message}`;
+                notify(msg, 'error');
             }
             loadCollection(collection);
+            return { id, synced: firebaseSuccess };
         }
 
         async function deleteFromCollection(collection, id) {
             LocalDB.deleteDoc(collection, id);
+            let firebaseSuccess = false;
             try {
                 await db.collection(resolveColl(collection)).doc(id).delete();
+                firebaseSuccess = true;
+                console.log(`✅ Firebase delete successful for ${collection}:${id}`);
             } catch (e) {
+                console.warn(`❌ Firebase delete error for ${collection}:${id}`, e.code, e.message);
                 // Firebase permissions may be restricted - data is deleted locally, sync disabled
                 if (e.code === 'permission-denied') {
                     console.warn('Firebase permission denied for delete - using local storage only');
+                    notify('Firebase permission denied - data deleted locally only', 'warn');
                 } else {
                     console.warn('Firebase delete error (removed locally):', e);
-                    notify(`Cloud sync disabled for ${collection}`, 'warn');
+                    notify(`Firebase delete failed: ${e.message}`, 'warn');
                 }
             }
             loadCollection(collection);
+            return { id, synced: firebaseSuccess };
         }
 
         async function shareRecord(collection, id) {
@@ -1801,10 +1821,12 @@
                 const tried = new Set();
                 let foundData = null;
                 let foundName = null;
+                
                 for (const cname of candidates) {
                     if (!cname || tried.has(cname)) continue;
                     tried.add(cname);
                     try {
+                        console.log(`Trying to load ${collection} from cloud collection: "${cname}"`);
                         const snap = await db.collection(cname).get();
                         const data = [];
                         snap.forEach(doc => {
@@ -1812,34 +1834,41 @@
                             const mapped = mapRead(collection, raw);
                             data.push(mapped);
                         });
+                        console.log(`✅ Found ${data.length} records in cloud collection "${cname}"`);
                         if (data.length > 0) {
                             foundData = data;
                             foundName = cname;
                             break;
                         }
                     } catch (e) {
+                        console.warn(`⚠️ Cloud read failed for ${cname}:`, e.code, e.message);
                         // continue trying next candidate
                     }
                 }
+                
                 if (foundData) {
                     const cache = getCloudNameCache();
                     cache[collection] = foundName;
                     setCloudNameCache(cache);
                     LocalDB.saveCollection(collection, foundData);
+                    console.log(`✅ Cloud data synced to local for ${collection}`);
                     renderTable(collection, foundData);
                     return;
                 }
+                
                 // If cloud has no records, prefer existing local data
                 const localData = LocalDB.getCollection(collection);
+                console.log(`⚪ No cloud data found, using local ${collection} (${localData.length} records)`);
                 renderTable(collection, localData);
                 return;
             } catch (e) {
-                console.warn('Firebase read error, falling back to local:', e);
+                console.warn(`❌ Firebase read error for ${collection}:`, e.code, e.message);
                 notify(`Cloud read failed for ${collection}: ${e.message || e}`, 'error');
             }
 
             try {
                 const localData = LocalDB.getCollection(collection);
+                console.log(`📦 Rendering local ${collection} (${localData.length} records)`);
                 renderTable(collection, localData);
             } catch (e) {
                 console.warn('Local render error:', e);
@@ -2841,10 +2870,15 @@
         async function syncAllFromFirebase() {
             const cols = ['expenses','investments','suppliers','invoices','exchange','cash','outstanding','outstanding_payments','payments'];
             let totalCloud = 0;
+            let totalErrors = 0;
             let hasPermissionError = false;
+            const syncLog = [];
+            
             for (const c of cols) {
                 try {
-                    const snapshot = await db.collection(resolveColl(c)).get();
+                    const collName = resolveColl(c);
+                    console.log(`🔄 Syncing ${c} from cloud collection "${collName}"`);
+                    const snapshot = await db.collection(collName).get();
                     const data = [];
                     snapshot.forEach(doc => {
                         const raw = { id: doc.id, ...doc.data() };
@@ -2855,20 +2889,36 @@
                         LocalDB.saveCollection(c, data);
                         renderTable(c, data);
                         totalCloud += data.length;
+                        syncLog.push(`✅ ${c}: ${data.length} records`);
+                        console.log(`✅ Synced ${data.length} ${c} records from cloud`);
+                    } else {
+                        syncLog.push(`⚪ ${c}: 0 records`);
+                        console.log(`⚪ No records in cloud collection "${collName}"`);
                     }
                 } catch (e) {
+                    totalErrors++;
                     if (e.code === 'permission-denied') {
                         hasPermissionError = true;
-                        console.warn('Firebase sync blocked - check Firestore security rules');
+                        syncLog.push(`❌ ${c}: Permission Denied`);
+                        console.warn(`❌ Firebase permission denied for ${c} - check Firestore security rules`);
                     } else {
-                        console.warn('Sync read error:', e);
+                        syncLog.push(`❌ ${c}: ${e.code || 'Error'}`);
+                        console.warn(`❌ Sync read error for ${c}:`, e.code, e.message);
                     }
                 }
             }
+            
+            console.log('📊 Sync Complete:', { totalCloud, totalErrors, hasPermissionError });
+            if (syncLog.length > 0) {
+                console.log('Sync Log:', syncLog.join(' | '));
+            }
+            
             if (hasPermissionError) {
-                notify(`Synced ${totalCloud} local records (Firebase sync disabled - check security rules)`, 'warn');
+                notify(`⚠️ Firebase permission denied - check security rules. Synced ${totalCloud} records (${totalErrors} errors)`, 'warn');
+            } else if (totalErrors > 0) {
+                notify(`⚠️ Synced ${totalCloud} records with ${totalErrors} errors`, 'warn');
             } else {
-                notify(`Synced ${totalCloud} cloud records`);
+                notify(`✅ Synced ${totalCloud} records from Firebase`, totalCloud > 0 ? 'success' : 'info');
             }
         }
 
@@ -3022,10 +3072,26 @@
         async function updateConnectionStatus() {
             const el = document.getElementById('connection-status');
             try {
+                console.log('🔍 Testing Firebase connection...');
                 await db.collection('expenses').limit(1).get();
-                el.textContent = '✅ Connected to Firebase';
+                if (el) {
+                    el.textContent = '✅ Connected to Firebase';
+                    el.style.color = 'rgb(74, 222, 128)';
+                }
+                console.log('✅ Firebase connection successful');
             } catch (e) {
-                el.textContent = '🟠 Offline mode (LocalDB)';
+                if (el) {
+                    el.textContent = `🟠 Offline mode (${e.code || 'connection failed'})`;
+                    el.style.color = 'rgb(248, 113, 113)';
+                    
+                    // Show more details for common errors
+                    if (e.code === 'permission-denied') {
+                        el.innerHTML += '<div style="font-size:11px;margin-top:4px;color:rgb(248,113,113)">❌ Firestore security rules blocking access</div>';
+                    } else if (e.code === 'unauthenticated') {
+                        el.innerHTML += '<div style="font-size:11px;margin-top:4px;color:rgb(248,113,113)">⚠️ Not authenticated</div>';
+                    }
+                }
+                console.warn(`❌ Firebase connection failed: ${e.code} - ${e.message}`);
             }
         }
 
@@ -3694,6 +3760,102 @@
         }
         
         console.log('✓ Browser Compatibility initialized:', window.browserInfo);
+
+        // Firebase Diagnostics Functions
+        async function refreshFirebaseDiagnostics() {
+            const connEl = document.getElementById('firebase-connection-status');
+            const colEl = document.getElementById('firebase-collections');
+            
+            if (connEl) connEl.textContent = '🔄 Checking connection...';
+            if (colEl) colEl.innerHTML = '';
+            
+            try {
+                await db.collection('expenses').limit(1).get();
+                if (connEl) connEl.innerHTML = '<span style="color: rgb(74, 222, 128);">✅ Firebase Connected</span>';
+            } catch (e) {
+                if (connEl) {
+                    connEl.innerHTML = `<span style="color: rgb(248, 113, 113);">❌ Firebase Error: ${e.code}</span>
+                    <div style="font-size: 10px; margin-top: 4px; color: rgb(156, 163, 175);">${e.message || e}</div>`;
+                }
+                return;
+            }
+            
+            // Show collection status
+            const cols = ['expenses','investments','suppliers','invoices','exchange','cash','outstanding','outstanding_payments','payments'];
+            let html = '';
+            
+            for (const c of cols) {
+                try {
+                    const collName = resolveColl(c);
+                    const snap = await db.collection(collName).limit(1).get();
+                    const count = snap.size;
+                    const local = LocalDB.getCollection(c).length;
+                    
+                    const status = count > 0 ? `✅` : count === 0 ? '⚪' : '❌';
+                    const synced = count === local ? '🔄' : '⚠️';
+                    
+                    html += `<div style="margin: 6px 0; padding: 6px; background: rgb(30, 41, 59); border-radius: 4px; border-left: 2px solid rgb(59, 130, 246);">
+                        <div>${c}: ${status} Cloud: ${count} | Local: ${local} ${synced}</div>
+                    </div>`;
+                } catch (e) {
+                    html += `<div style="margin: 6px 0; padding: 6px; background: rgb(30, 41, 59); border-radius: 4px; border-left: 2px solid rgb(248, 113, 113);">
+                        <div>${c}: ❌ Error (${e.code || 'unknown'})</div>
+                    </div>`;
+                }
+            }
+            
+            if (colEl) colEl.innerHTML = html;
+        }
+
+        async function manualFirebaseSync() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Syncing...';
+            
+            try {
+                await syncAllFromFirebase();
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = 'Force Sync';
+                    refreshFirebaseDiagnostics();
+                }, 500);
+            } catch (e) {
+                console.error('Manual sync error:', e);
+                btn.textContent = `Sync Failed: ${e.code}`;
+                btn.disabled = false;
+                setTimeout(() => { btn.textContent = 'Force Sync'; }, 3000);
+            }
+        }
+
+        // Show diagnostics button after init completes
+        setTimeout(() => {
+            const diagBtn = document.getElementById('diagnostic-toggle');
+            if (diagBtn) {
+                diagBtn.style.display = 'block';
+                // Auto-open on first load to show status
+                setTimeout(() => {
+                    document.getElementById('firebase-diagnostics').style.display = 'block';
+                    refreshFirebaseDiagnostics();
+                }, 1000);
+            }
+        }, 2000);
     </script>
-</body>
-</html>
+
+    <!-- Firebase Diagnostics Panel -->
+    <div id="firebase-diagnostics" style="position: fixed; bottom: 60px; right: 20px; width: 340px; max-height: 450px; background: rgb(15, 23, 42); border: 2px solid rgb(59, 130, 246); border-radius: 8px; padding: 16px; color: rgb(203, 213, 225); font-size: 12px; font-family: 'Courier New', monospace; z-index: 9999; overflow-y: auto; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid rgb(71, 85, 105); padding-bottom: 10px;">
+            <strong style="color: rgb(148, 163, 184); font-size: 13px;">🔧 Firebase Diagnostics</strong>
+            <button onclick="document.getElementById('firebase-diagnostics').style.display='none'" style="background: none; border: none; color: rgb(148, 163, 184); cursor: pointer; font-size: 16px; padding: 0;">✕</button>
+        </div>
+        <div id="firebase-connection-status" style="color: rgb(248, 113, 113); margin-bottom: 10px; border: 1px solid rgb(71, 85, 105); padding: 8px; border-radius: 4px;">Initializing...</div>
+        <div style="color: rgb(148, 163, 184); margin-bottom: 6px; font-size: 11px; font-weight: bold;">Collection Status:</div>
+        <div id="firebase-collections" style="max-height: 280px; overflow-y: auto; margin-bottom: 12px;"></div>
+        <div style="border-top: 2px solid rgb(71, 85, 105); padding-top: 10px; margin-top: 10px; display: flex; gap: 6px;">
+            <button onclick="manualFirebaseSync()" style="flex: 1; padding: 8px; background: rgb(34, 197, 94); border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 11px; font-weight: bold;">🔄 Force Sync</button>
+            <button onclick="refreshFirebaseDiagnostics()" style="flex: 1; padding: 8px; background: rgb(59, 130, 246); border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 11px; font-weight: bold;">🔍 Refresh</button>
+        </div>
+    </div>
+
+    <!-- Diagnostics Toggle Button -->
+    <button id="diagnostic-toggle" onclick="document.getElementById('firebase-diagnostics').style.display=document.getElementById('firebase-diagnostics').style.display==='none'?'block':'none'" style="position: fixed; bottom: 20px; right: 20px; width: 48px; height: 48px; background: rgb(59, 130, 246); border: 2px solid rgb(93, 155, 255); border-radius: 50%; color: white; cursor: pointer; font-size: 20px; z-index: 9998; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: none;" title="Toggle Firebase Diagnostics">⚙️</button>
+
