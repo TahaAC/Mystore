@@ -1092,6 +1092,83 @@
             outstanding: []
         };
 
+        // Sorting state for tables
+        const SortState = {};
+
+        function getSortIndicator(column, sortKey) {
+            if (!SortState[sortKey] || SortState[sortKey].column !== column) return '↕️';
+            return SortState[sortKey].ascending ? '↑' : '↓';
+        }
+
+        function sortTableData(data, column, columnDef) {
+            if (!Array.isArray(data)) return data;
+            
+            const sortCopy = [...data];
+            return sortCopy.sort((a, b) => {
+                let aVal = (typeof columnDef.value === 'function') ? columnDef.value(a) : a[columnDef.key];
+                let bVal = (typeof columnDef.value === 'function') ? columnDef.value(b) : b[columnDef.key];
+                
+                // Handle numeric values
+                if (columnDef.type === 'currency') {
+                    aVal = parseFloat(aVal) || 0;
+                    bVal = parseFloat(bVal) || 0;
+                } else if (!isNaN(aVal) && !isNaN(bVal)) {
+                    aVal = parseFloat(aVal) || aVal;
+                    bVal = parseFloat(bVal) || bVal;
+                }
+                
+                // Handle date values
+                if (columnDef.type === 'date') {
+                    aVal = new Date(aVal).getTime() || 0;
+                    bVal = new Date(bVal).getTime() || 0;
+                }
+                
+                // String comparison
+                if (typeof aVal === 'string' && typeof bVal === 'string') {
+                    return aVal.localeCompare(bVal);
+                }
+                
+                // Numeric comparison
+                if (typeof aVal === 'number' && typeof bVal === 'number') {
+                    return aVal - bVal;
+                }
+                
+                return 0;
+            });
+        }
+
+        function handleColumnSort(sortKeyOrCollection, columnKey, columnDef) {
+            // sortKeyOrCollection can be either a collection name or a composite key like "investments_investments-hayat-table"
+            // Toggle sort direction if clicking the same column
+            if (SortState[sortKeyOrCollection] && SortState[sortKeyOrCollection].column === columnKey) {
+                SortState[sortKeyOrCollection].ascending = !SortState[sortKeyOrCollection].ascending;
+            } else {
+                // New column, sort ascending
+                SortState[sortKeyOrCollection] = { column: columnKey, ascending: true };
+            }
+            
+            // Re-render the appropriate table
+            if (sortKeyOrCollection.includes('_')) {
+                // This is a container-specific sort (e.g., "investments_investments-hayat-table")
+                const parts = sortKeyOrCollection.split('_');
+                const collection = parts[0];
+                const containerId = parts.slice(1).join('_');
+                const allData = LocalDB.getCollection(collection);
+                let filtered = allData;
+                
+                if (collection === 'investments' && containerId === 'investments-hayat-table') {
+                    filtered = allData.filter(r => r.investor === 'Haji Hayat');
+                } else if (collection === 'investments' && containerId === 'investments-abbas-table') {
+                    filtered = allData.filter(r => r.investor === 'Abbas');
+                }
+                renderTableToContainer(collection, filtered, containerId);
+            } else {
+                // Regular collection sort
+                const data = LocalDB.getCollection(sortKeyOrCollection);
+                renderTable(sortKeyOrCollection, data);
+            }
+        }
+
         // Map logical tab names to Firestore collection names
         const CollectionMap = { outstanding: 'customers' };
         const CloudNameCandidates = {
@@ -2268,12 +2345,30 @@
                         </div>`;
                         
                         if (isOpen) {
+                            // Apply sorting to rows
+                            let displayRows = rows;
+                            if (SortState[collection] && SortState[collection].column) {
+                                const sortCol = cols.find(c => c.key === SortState[collection].column);
+                                if (sortCol) {
+                                    displayRows = sortTableData(rows, SortState[collection].column, sortCol);
+                                    if (!SortState[collection].ascending) {
+                                        displayRows.reverse();
+                                    }
+                                }
+                            }
+                            
                             html += '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;border-collapse:collapse;min-width:600px">';
                             html += '<thead><tr style="background:#0f172a">';
-                            cols.forEach(c => { html += `<th style="padding:8px;border-bottom:1px solid #3b82f6;word-break:break-word">${c.label}</th>`; });
+                            cols.forEach(c => { 
+                                const indicator = getSortIndicator(c.key, collection);
+                                html += `<th style="padding:8px;border-bottom:1px solid #3b82f6;word-break:break-word;cursor:pointer;user-select:none;background:#0f172a;hover:background:#1e293b" onclick="handleColumnSort('${collection}', '${c.key}', ${JSON.stringify(c).replace(/"/g, '&quot;')})" title="Click to sort">
+                                    <span>${c.label}</span>
+                                    <span style="color:#3b82f6;font-weight:bold;margin-left:4px">${indicator}</span>
+                                </th>`; 
+                            });
                             html += '<th style="padding:8px;border-bottom:1px solid #3b82f6">Actions</th></tr></thead><tbody>';
                             
-                            rows.forEach(row => {
+                            displayRows.forEach(row => {
                                 const payments = getInvoicePayments(row.num);
                                 const invoiceAmount = parseFloat(row.amount) || 0;
                                 const historyKey = `hist_${row.id}`;
@@ -2393,12 +2488,30 @@
                         </div>`;
                         
                         if (isOpen) {
+                            // Apply sorting to rows
+                            let displayRows = rows;
+                            if (SortState[collection] && SortState[collection].column) {
+                                const sortCol = cols.find(c => c.key === SortState[collection].column);
+                                if (sortCol) {
+                                    displayRows = sortTableData(rows, SortState[collection].column, sortCol);
+                                    if (!SortState[collection].ascending) {
+                                        displayRows.reverse();
+                                    }
+                                }
+                            }
+                            
                             html += '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;border-collapse:collapse;min-width:600px">';
                             html += '<thead><tr style="background:#0f172a">';
-                            cols.forEach(c => { html += `<th style="padding:8px;border-bottom:1px solid #3b82f6;word-break:break-word">${c.label}</th>`; });
+                            cols.forEach(c => { 
+                                const indicator = getSortIndicator(c.key, collection);
+                                html += `<th style="padding:8px;border-bottom:1px solid #3b82f6;word-break:break-word;cursor:pointer;user-select:none;background:#0f172a" onclick="handleColumnSort('${collection}', '${c.key}', ${JSON.stringify(c).replace(/"/g, '&quot;')})" title="Click to sort">
+                                    <span>${c.label}</span>
+                                    <span style="color:#3b82f6;font-weight:bold;margin-left:4px">${indicator}</span>
+                                </th>`;
+                            });
                             html += '<th style="padding:8px;border-bottom:1px solid #3b82f6">Actions</th></tr></thead><tbody>';
                             
-                            rows.forEach(row => {
+                            displayRows.forEach(row => {
                                 const payments = LocalDB.getCollection('outstanding_payments').filter(p => String(p.outstandingId).trim() === String(row.id).trim());
                                 const outstandingAmount = parseFloat(row.amount) || 0;
                                 const historyKey = `out_hist_${row.id}`;
@@ -2474,32 +2587,50 @@
                 }
                 
                 // Default table rendering for other collections
-                let html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:600px;width:100%">';
-                html += '<thead><tr>';
-                cols.forEach(c => { html += `<th>${c.label}</th>`; });
-                html += '<th>Actions</th></tr></thead><tbody>';
+                // Apply sorting to data
+                let displayData = data;
+                if (SortState[collection] && SortState[collection].column) {
+                    const sortCol = cols.find(c => c.key === SortState[collection].column);
+                    if (sortCol) {
+                        displayData = sortTableData(data, SortState[collection].column, sortCol);
+                        if (!SortState[collection].ascending) {
+                            displayData.reverse();
+                        }
+                    }
+                }
+                
+                let html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:600px;width:100%;border-collapse:collapse">';
+                html += '<thead><tr style="background:#0f172a">';
+                cols.forEach(c => { 
+                    const indicator = getSortIndicator(c.key, collection);
+                    html += `<th style="padding:8px;border-bottom:1px solid #3b82f6;cursor:pointer;user-select:none" onclick="handleColumnSort('${collection}', '${c.key}', ${JSON.stringify(c).replace(/"/g, '&quot;')})" title="Click to sort">
+                        <span>${c.label}</span>
+                        <span style="color:#3b82f6;font-weight:bold;margin-left:4px">${indicator}</span>
+                    </th>`;
+                });
+                html += '<th style="padding:8px;border-bottom:1px solid #3b82f6">Actions</th></tr></thead><tbody>';
 
-                data.forEach(row => {
-                    html += '<tr>';
+                displayData.forEach(row => {
+                    html += '<tr style="border-bottom:1px solid #1e293b">';
                     cols.forEach(c => {
                         let val = (typeof c.value === 'function') ? c.value(row) : row[c.key];
                         if (c.type === 'currency') val = formatCurrency(val);
                         else if (c.type === 'date') val = formatDate(val);
-                        html += `<td>${(val ?? 'N/A')}</td>`;
+                        html += `<td style="padding:8px">${(val ?? 'N/A')}</td>`;
                     });
                     const id = row.id || '';
-                    html += `<td class="flex gap-2">
+                    html += `<td style="padding:8px"><div class="flex gap-2">
                         <button class="btn btn-primary toolbar-btn no-print" onclick="openEditModal('${collection}', '${id}')"><i class='fas fa-pen'></i></button>
                         <button class="btn btn-primary toolbar-btn no-print" onclick="shareRecord('${collection}', '${id}')"><i class='fas fa-share-alt'></i></button>
                         <button class="btn btn-danger toolbar-btn no-print" onclick="deleteFromCollection('${collection}', '${id}')"><i class='fas fa-trash'></i></button>
                         <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForRow('${collection}', '${id}')"><i class='fas fa-eye'></i></button>
                         <button class="btn btn-primary toolbar-btn no-print" onclick="printRow('${collection}', '${id}')"><i class='fas fa-print'></i></button>
-                    </td>`;
+                    </div></td>`;
                     html += '</tr>';
                 });
                 html += '</tbody></table></div>';
                 container.innerHTML = html;
-                updateTotals(collection, data);
+                updateTotals(collection, displayData);
             } catch (e) {
                 console.error('renderTable error:', e);
                 container.innerHTML = '<p class="text-red-400">Error rendering table</p>';
@@ -2524,23 +2655,44 @@
                 cols = cols.filter(c => c.label !== 'Haji Hayat');
             }
             
-            html += '<table><thead><tr>' + cols.map(c => `<th>${c.label}</th>`).join('') + '<th>Actions</th></tr></thead><tbody>';
-            data.forEach(row => {
-                html += '<tr>';
+            // Apply sorting to data (use collection + containerId as sort key for unique tracking)
+            const sortKey = `${collection}_${containerId}`;
+            let displayData = data;
+            if (SortState[sortKey] && SortState[sortKey].column) {
+                const sortCol = cols.find(c => c.key === SortState[sortKey].column);
+                if (sortCol) {
+                    displayData = sortTableData(data, SortState[sortKey].column, sortCol);
+                    if (!SortState[sortKey].ascending) {
+                        displayData.reverse();
+                    }
+                }
+            }
+            
+            html += '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#0f172a">';
+            cols.forEach(c => {
+                const indicator = getSortIndicator(c.key, sortKey);
+                html += `<th style="padding:8px;border-bottom:1px solid #3b82f6;cursor:pointer;user-select:none" onclick="handleColumnSort('${sortKey}', '${c.key}', ${JSON.stringify(c).replace(/"/g, '&quot;')})" title="Click to sort">
+                    <span>${c.label}</span>
+                    <span style="color:#3b82f6;font-weight:bold;margin-left:4px">${indicator}</span>
+                </th>`;
+            });
+            html += '<th style="padding:8px;border-bottom:1px solid #3b82f6">Actions</th></tr></thead><tbody>';
+            displayData.forEach(row => {
+                html += '<tr style="border-bottom:1px solid #1e293b">';
                 cols.forEach(c => {
                     let val = (typeof c.value === 'function') ? c.value(row) : row[c.key];
                     if (c.type === 'currency') val = formatCurrency(val);
                     else if (c.type === 'date') val = formatDate(val);
-                    html += `<td>${(val ?? 'N/A')}</td>`;
+                    html += `<td style="padding:8px">${(val ?? 'N/A')}</td>`;
                 });
                 const id = row.id || '';
-                html += `<td class="flex gap-2">
+                html += `<td style="padding:8px"><div class="flex gap-2">
                     <button class="btn btn-primary toolbar-btn no-print" onclick="openEditModal('${collection}', '${id}')"><i class='fas fa-pen'></i></button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="shareRecord('${collection}', '${id}')"><i class='fas fa-share-alt'></i></button>
                     <button class="btn btn-danger toolbar-btn no-print" onclick="deleteFromCollection('${collection}', '${id}')"><i class='fas fa-trash'></i></button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="openPrintPreviewForRow('${collection}', '${id}')"><i class='fas fa-eye'></i></button>
                     <button class="btn btn-primary toolbar-btn no-print" onclick="printRow('${collection}', '${id}')"><i class='fas fa-print'></i></button>
-                </td>`;
+                </div></td>`;
                 html += '</tr>';
             });
             html += '</tbody></table>';
@@ -3827,130 +3979,5 @@
         }
         
         console.log('✓ Browser Compatibility initialized:', window.browserInfo);
-
-        // Firebase Diagnostics Functions
-        async function refreshFirebaseDiagnostics() {
-            // Safety check - ensure LocalDB and db are available
-            if (typeof LocalDB === 'undefined' || typeof db === 'undefined') {
-                console.warn('⚠️ Diagnostics: LocalDB or db not yet initialized');
-                const connEl = document.getElementById('firebase-connection-status');
-                if (connEl) connEl.textContent = '⏳ Initializing...';
-                return;
-            }
-            
-            const connEl = document.getElementById('firebase-connection-status');
-            const storageEl = document.getElementById('firebase-storage-status');
-            const colEl = document.getElementById('firebase-collections');
-            
-            if (connEl) connEl.textContent = '🔄 Checking connection...';
-            if (colEl) colEl.innerHTML = '';
-            
-            // Show storage status
-            if (storageEl) {
-                if (typeof LocalDB.isStorageAvailable === 'function' && LocalDB.isStorageAvailable()) {
-                    storageEl.innerHTML = '<span style="color: rgb(74, 222, 128);">✅ Storage Available (persistent)</span>';
-                } else {
-                    storageEl.innerHTML = '<span style="color: rgb(248, 113, 113);">💾 In-Memory Only (Tracking Prevention)</span><div style="font-size:10px;margin-top:4px;color:rgb(156,163,175)">Data will be lost on refresh!</div>';
-                }
-            }
-            
-            try {
-                await db.collection('expenses').limit(1).get();
-                if (connEl) connEl.innerHTML = '<span style="color: rgb(74, 222, 128);">✅ Firebase Connected</span>';
-            } catch (e) {
-                if (connEl) {
-                    connEl.innerHTML = `<span style="color: rgb(248, 113, 113);">❌ Firebase Error: ${e.code}</span>
-                    <div style="font-size: 10px; margin-top: 4px; color: rgb(156, 163, 175);">${e.message || e}</div>`;
-                }
-                return;
-            }
-            
-            // Show collection status
-            const cols = ['expenses','investments','suppliers','invoices','exchange','cash','outstanding','outstanding_payments','payments'];
-            let html = '';
-            let totalCollections = 0;
-            
-            for (const c of cols) {
-                try {
-                    const collName = resolveColl(c);
-                    const snap = await db.collection(collName).get();
-                    const count = snap.size;
-                    const local = LocalDB.getCollection(c).length;
-                    totalCollections += count;
-                    
-                    const status = count > 0 ? `✅` : count === 0 ? '⚪' : '❌';
-                    const synced = count === local ? '🔄' : '⚠️';
-                    
-                    html += `<div style="margin: 6px 0; padding: 6px; background: rgb(30, 41, 59); border-radius: 4px; border-left: 2px solid rgb(59, 130, 246);">
-                        <div>${c}: ${status} Cloud: ${count} | Local: ${local} ${synced}</div>
-                    </div>`;
-                } catch (e) {
-                    html += `<div style="margin: 6px 0; padding: 6px; background: rgb(30, 41, 59); border-radius: 4px; border-left: 2px solid rgb(248, 113, 113);">
-                        <div>${c}: ❌ Error (${e.code || 'unknown'})</div>
-                    </div>`;
-                }
-            }
-            
-            html = `<div style="margin-bottom:8px;padding:8px;background:rgb(20,32,48);border-radius:4px;border-left:2px solid rgb(34,197,94);"><strong>Total Cloud Records: ${totalCollections}</strong></div>` + html;
-            if (colEl) colEl.innerHTML = html;
-        }
-
-        async function manualFirebaseSync() {
-            if (typeof syncAllFromFirebase !== 'function') {
-                alert('❌ Sync function not yet loaded');
-                return;
-            }
-            const btn = event.target;
-            btn.disabled = true;
-            btn.textContent = 'Syncing...';
-            
-            try {
-                await syncAllFromFirebase();
-                setTimeout(() => {
-                    btn.disabled = false;
-                    btn.textContent = 'Force Sync';
-                    refreshFirebaseDiagnostics();
-                }, 500);
-            } catch (e) {
-                console.error('Manual sync error:', e);
-                btn.textContent = `Sync Failed: ${e.code}`;
-                btn.disabled = false;
-                setTimeout(() => { btn.textContent = 'Force Sync'; }, 3000);
-            }
-        }
-
-        // Show diagnostics button after init completes (with safety delays)
-        setTimeout(() => {
-            const diagBtn = document.getElementById('diagnostic-toggle');
-            if (diagBtn) {
-                diagBtn.style.display = 'block';
-                // Auto-open on first load to show status (delay to ensure full init)
-                setTimeout(() => {
-                    if (typeof LocalDB !== 'undefined' && typeof db !== 'undefined') {
-                        document.getElementById('firebase-diagnostics').style.display = 'block';
-                        refreshFirebaseDiagnostics();
-                    }
-                }, 2000);
-            }
-        }, 4000);
     </script>
-
-    <!-- Firebase Diagnostics Panel -->
-    <div id="firebase-diagnostics" style="position: fixed; bottom: 60px; right: 20px; width: 340px; max-height: 480px; background: rgb(15, 23, 42); border: 2px solid rgb(59, 130, 246); border-radius: 8px; padding: 16px; color: rgb(203, 213, 225); font-size: 12px; font-family: 'Courier New', monospace; z-index: 9999; overflow-y: auto; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid rgb(71, 85, 105); padding-bottom: 10px;">
-            <strong style="color: rgb(148, 163, 184); font-size: 13px;">🔧 Firebase Diagnostics</strong>
-            <button onclick="document.getElementById('firebase-diagnostics').style.display='none'" style="background: none; border: none; color: rgb(148, 163, 184); cursor: pointer; font-size: 16px; padding: 0;">✕</button>
-        </div>
-        <div id="firebase-storage-status" style="color: rgb(248, 113, 113); margin-bottom: 8px; border: 1px solid rgb(71, 85, 105); padding: 8px; border-radius: 4px; font-size: 11px;">Checking storage...</div>
-        <div id="firebase-connection-status" style="color: rgb(248, 113, 113); margin-bottom: 10px; border: 1px solid rgb(71, 85, 105); padding: 8px; border-radius: 4px;">Initializing...</div>
-        <div style="color: rgb(148, 163, 184); margin-bottom: 6px; font-size: 11px; font-weight: bold;">Collection Status:</div>
-        <div id="firebase-collections" style="max-height: 250px; overflow-y: auto; margin-bottom: 12px;"></div>
-        <div style="border-top: 2px solid rgb(71, 85, 105); padding-top: 10px; margin-top: 10px; display: flex; gap: 6px;">
-            <button onclick="manualFirebaseSync()" style="flex: 1; padding: 8px; background: rgb(34, 197, 94); border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 11px; font-weight: bold;">🔄 Force Sync</button>
-            <button onclick="refreshFirebaseDiagnostics()" style="flex: 1; padding: 8px; background: rgb(59, 130, 246); border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 11px; font-weight: bold;">🔍 Refresh</button>
-        </div>
-    </div>
-
-    <!-- Diagnostics Toggle Button -->
-    <button id="diagnostic-toggle" onclick="document.getElementById('firebase-diagnostics').style.display=document.getElementById('firebase-diagnostics').style.display==='none'?'block':'none'" style="position: fixed; bottom: 20px; right: 20px; width: 48px; height: 48px; background: rgb(59, 130, 246); border: 2px solid rgb(93, 155, 255); border-radius: 50%; color: white; cursor: pointer; font-size: 20px; z-index: 9998; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: none;" title="Toggle Firebase Diagnostics">⚙️</button>
 
